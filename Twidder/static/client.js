@@ -1,13 +1,4 @@
 var webSocket;
-/*
-webSocket.onopen = function()
-{
-    
-};
-
-webSocket.onerror = function (error) {
-    console.log('WebSocket Error ' + error);
-};*/
 
 var displayView = function(viewId)
 {
@@ -296,6 +287,23 @@ var createMessage = function(writer, message, datePosted, elementId)
     var container = document.createElement("DIV");
 
     container.classList.add("messageContainer");
+    container.setAttribute("draggable", "true");
+
+    container.ondragstart = function(event)
+    {
+	event.dataTransfer.setData("writer", event.target.getElementsByTagName("H2")[0].innerHTML);
+	event.dataTransfer.setData("message", event.target.getElementsByTagName("P")[0].innerHTML);
+    };
+    
+    container.ondrag = function(event)
+    {
+	console.log(event);/*
+	document.onmousemovement = function(event)
+	{
+	    console.log("asd");
+	}*/
+    };
+
 
     var header = document.createElement("H2");
 
@@ -432,6 +440,23 @@ var loadSignedIn = function()
     setupChangePasswordForm();
 
     document.getElementById("homePostMessageForm").onsubmit = homePostMessageSubmit;
+    
+    document.getElementById("homeMessage").ondrop = function(event)
+    {
+	dragging = false;
+
+	event.preventDefault();
+
+	var writer = event.dataTransfer.getData("writer");
+	var message = event.dataTransfer.getData("message");
+	if(writer != "" && message != "")
+	    event.target.value += 'Reply to: ' + writer + '\n' + message;
+    };
+
+    document.getElementById("homeMessage").ondragover = function(event)
+    {
+	event.preventDefault();
+    };
 
     setupRefreshButton(document.getElementById("browseRefreshButton"), localStorage.getItem("currentBrowseEmail"), "browseMessages");
 

@@ -311,6 +311,7 @@ div.messageContainer p
     font-family: Arial;
     font-size: 12px;
     word-wrap: break-word;
+    white-space: pre;
 }
 
 #browseView
