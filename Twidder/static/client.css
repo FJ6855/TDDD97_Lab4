@@ -1,0 +1,362 @@
+body
+{
+    background-color: #aaa;
+}
+
+#alertMessage
+{
+    width: 590px;
+    min-height: 20px;
+    padding: 5px;
+    margin: 100px auto 0px auto;
+    font-family: Arial;
+    font-size: 15px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.infoMessage
+{
+    background-color: #eeee00;
+}
+
+.errorMessage
+{
+    background-color: #ff0000;
+}
+
+.view
+{
+    width: 600px;
+    margin: 10px auto;
+}
+
+#logo
+{
+    width: 340px;
+    height: 535px;
+    margin-right: 10px;
+    float: left;
+    background: #fff url("wimage.png") no-repeat;
+}
+
+#login
+{
+    width: 230px;
+    height: 120px;
+    padding: 10px;
+    float: right;
+    margin-bottom: 10px;
+    background-color: #FFF;
+}
+
+#signup
+{
+    width: 230px;
+    height: 365px;
+    float: right;
+    padding: 10px;
+    background-color: #FFF;
+}
+
+#menu
+{
+    width: 580px;
+    height: 30px;
+    padding: 10px;
+    background-color: #fff;
+    margin-bottom: 10px;
+}
+
+.menuItem
+{
+    margin-right: 10px;
+    padding: 5px 20px;
+    font-family: Arial;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    float: left;
+    background-color: #555;
+    color: #fff;
+}
+
+.selected
+{
+    background-color: #000;
+}
+
+.menuItem:hover
+{
+    cursor: pointer;
+    background-color: #888;
+}
+
+#signOut
+{
+    margin-right: 10px;
+    padding: 5px 20px;
+    font-family: Arial;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    float: right;
+    background-color: #aa0000;
+    color: #fff;
+}
+
+#signOut:hover
+{
+    background-color: #dd0000;
+    cursor: pointer;
+}
+
+#contentContainer
+{
+    width: 600px;
+    height: 535px;
+}
+
+div h1
+{
+    margin: 0;
+    margin-bottom: 10px;
+    padding: 5px 0;
+    font-family: Arial;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    background-color: #000;
+    color: #fff;
+}
+
+div h2
+{
+    margin: 0;
+    margin-bottom: 5px;
+    padding: 0;
+    font-family: Arial;
+    font-size: 13px;
+    font-weight: bold;
+    color: #000;  
+    border-bottom: 1px solid;
+}
+
+div.formRow
+{
+    height: 20px;
+    margin-bottom: 10px;
+    font-family: Arial;
+    font-size: 12px;
+    clear: both;
+}
+
+div.formRow .labelContainer
+{
+    padding: 5px 0;
+    width: 70px;
+    float: left;
+}
+
+div.formRow .inputContainer
+{
+    float: right;
+    position: relative;
+}
+
+div.formRow .inputContainer input, select
+{
+    width: 150px;
+}
+
+div.formRow .inputContainer input
+{
+    border: 1px solid #aaa;
+}
+
+div.formRow .inputContainer .inputError
+{
+    border: 1px solid #ff0000;
+}
+
+div.formRow .inputContainer .inputErrorMessage
+{
+    position: absolute;
+    top: 0px;
+    left: 0px;
+}
+
+div.content
+{
+    display: none;
+    width: 600px;
+    height: 515px;
+    background-color: #fff;
+}
+
+div.selectedContent
+{
+    display: block;
+}
+
+#changePassword
+{
+    width: 260px;
+    padding: 10px;
+}
+
+#changePassword div.formRow .labelContainer
+{
+    width: 100px;
+}
+
+#homeView
+{
+    background-color: transparent;
+}
+
+.profileInformation
+{
+    width: 230px;
+    height: 180px;
+    float: right;
+    padding: 10px;
+    background-color: #FFF;
+}
+
+p
+{
+    font-family: Arial;
+    font-size: 12px;
+    margin: 0;
+    margin-bottom: 5px;
+    padding: 0;
+}
+
+.profileInformation p span
+{
+    font-weight: bold;
+}
+
+.postMessage
+{
+    width: 320px;
+    height: 180px;
+    padding: 10px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    float: left;
+    background-color: #FFF;
+}
+
+.postMessageForm div.formRow
+{
+    height: auto;
+}
+
+.postMessageForm div.formRow .labelContainer
+{
+    float: none;
+}
+
+.postMessageForm div.formRow .inputContainer
+{
+    float: none;
+}
+
+.postMessageForm div.formRow .inputContainer textarea
+{
+    width: 312px;
+    height: 98px;
+    border: 1px solid;
+    font-family: Arial;
+    font-size: 12px;
+    margin: 0;
+    padding: 3px;
+}
+
+.messageWall
+{
+    width: 580px;
+    min-height: 480px;
+    padding: 10px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    clear: both;
+    background-color: #FFF;
+    position: relative;
+}
+
+.refreshButton
+{
+    position: absolute;
+    top: 15px;
+    right: 15px;
+}
+
+.messages
+{
+    clear: both;
+}
+
+div.messageContainer
+{
+    margin-bottom: 10px;
+}
+
+div.messageContainer p
+{
+    margin: 0px;
+    padding: 0px;
+    font-family: Arial;
+    font-size: 12px;
+    word-wrap: break-word;
+}
+
+#browseView
+{
+    background-color: transparent;
+}
+
+#searchProfile
+{
+    margin-bottom: 10px;
+    padding: 10px;
+    width: 580px;
+    background-color: #fff;
+}
+
+#searchProfile div.formRow
+{
+    margin: 0;
+}
+
+#searchProfile div.formRow .inputContainer
+{
+    float: left;
+}
+
+#profileEmail
+{
+    width: 485px;
+    margin-right: 10px;
+}
+
+#submitSearchProfile
+{
+    width: 80px;
+}
+
+#searchProfileInformation
+{
+    width: 230px;
+    height: 180px;
+    float: right;
+    padding: 10px;
+    background-color: #FFF;
+}
+
+.hideBrowseElement
+{
+    display: none;
+}
