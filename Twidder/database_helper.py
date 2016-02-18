@@ -33,6 +33,14 @@ def executeChange(sql, args):
     cursor.close()
     return True
 
+def executeChangeAndGetId(sql, args):                         
+    cursor = databaseConnection.cursor()
+    cursor.execute(sql, args)
+    databaseConnection.commit()
+    rowId = cursor.lastrowid
+    cursor.close()
+    return rowId
+
 def getUserByEmail(email):
     return executeSelect('select email, firstName, lastName, gender, city, country from users where email = ?', (email,), True)
 
@@ -53,6 +61,13 @@ def getUserEmailByToken(token):
 def getUserMessagesByEmail(email):
     return executeSelect('select * from messages where wallEmail = ? order by datePosted desc', (email,))
 
+def getFileNameByMessageId(messageId):
+    fileName = executeSelect('select fileName from files where messageId = ?', (messageId,), True)
+    if fileName is not None:
+        return fileName[0]
+    else:
+        return None
+
 def insertUser(email, firstName, lastName, gender, city, country, passwordHash):
     return executeChange('insert into users values (?, ?, ?, ?, ?, ?, ?)', (email, passwordHash, firstName, lastName, gender, city, country))
 
@@ -60,7 +75,10 @@ def insertSignedInUser(token, email):
     return executeChange('insert into signedInUsers values (?, ?)', (token, email))
 
 def insertMessage(writerEmail, email, message):
-    return executeChange('insert into messages (message, wallEmail, writer) values (?, ?, ?)', (message, email, writerEmail))
+    return executeChangeAndGetId('insert into messages (message, wallEmail, writer) values (?, ?, ?)', (message, email, writerEmail))
+
+def insertFile(fileName, messageId):
+    return executeChange('insert into files (fileName, messageId) values (?, ?)', (fileName, messageId))
 
 def deleteSignedInUser(token):
     return executeChange('delete from signedInUsers where token = ?', (token,))

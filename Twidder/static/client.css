@@ -311,7 +311,13 @@ div.messageContainer p
     font-family: Arial;
     font-size: 12px;
     word-wrap: break-word;
-    white-space: pre;
+    white-space: pre-wrap;
+}
+
+div.messageContainer img, video
+{
+    max-width: 580px;
+    max-height: 400px;
 }
 
 #browseView
@@ -361,3 +367,14 @@ div.messageContainer p
 {
     display: none;
 }
+
+#homeFile, #browseFile
+{
+    width: 208px;
+    margin-right: 5px;
+}
+
+/*div:target
+{
+    display: block;
+}*/

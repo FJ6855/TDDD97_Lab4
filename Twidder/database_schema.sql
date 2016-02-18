@@ -1,6 +1,7 @@
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS signedInUsers;
 DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS files;
 
 CREATE TABLE users (
        email VARCHAR(200) PRIMARY KEY,
@@ -24,6 +25,12 @@ CREATE TABLE messages (
        writer VARCHAR(200) NOT NULL,
        FOREIGN KEY (wallEmail) REFERENCES users(email),
        FOREIGN KEY (writer) REFERENCES users(email));
+
+CREATE TABLE files (
+       fileId INTEGER PRIMARY KEY AUTOINCREMENT,
+       fileName varchar(10) NOT NULL,
+       messageId INTEGER NOT NULL,
+       FOREIGN KEY (messageId) REFERENCES messages(messageId));
 
        
        

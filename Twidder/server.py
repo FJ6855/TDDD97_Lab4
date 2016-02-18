@@ -1,9 +1,11 @@
+import os
 import json
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 from flask.ext.bcrypt import Bcrypt
 from wtforms import Form, TextField, PasswordField, validators
 from random import randint
 from geventwebsocket import WebSocketError
+from werkzeug import secure_filename
 
 from Twidder import app
 
@@ -12,6 +14,14 @@ import database_helper
 bcrypt = Bcrypt(app)
 
 webSockets = {}
+
+UPLOAD_FOLDER = 'Twidder/files/'
+ALLOWED_IMAGE_EXTENSIONS = set(['jpg', 'jpeg', 'png', 'gif'])
+ALLOWED_VIDEO_EXTENSIONS = set(['mpg', 'mp4', 'avi']) 
+ALLOWED_AUDIO_EXTENSIONS = set(['mp3', 'wma', 'wav'])
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
 
 class SignUpForm(Form):
     firstName = TextField('First name', [validators.Required()])
@@ -40,6 +50,27 @@ def createToken():
     for i in range(0, 36):
         token += letters[randint(0,len(letters) - 1)]
     return token
+
+def getFileExtension(fileName):
+    return fileName.rsplit('.', 1)[1]
+
+def createFileName(fileExtension):
+    letters = 'abcdefghiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890'
+    fileName = ''
+    for i in range(0, 10):
+        fileName += letters[randint(0, len(letters) - 1)]
+    fileName += "." + fileExtension
+    return fileName
+
+def getFileType(fileExtension):
+    if fileExtension in ALLOWED_IMAGE_EXTENSIONS:
+        return 'image'
+    elif fileExtension in ALLOWED_VIDEO_EXTENSIONS:
+        return 'video'
+    elif fileExtension in ALLOWED_AUDIO_EXTENSIONS:
+        return 'audio'
+    else:
+        return ''
 
 def validLogin(email, password):
     passwordHash = database_helper.getUserPasswordByEmail(email)
@@ -156,7 +187,14 @@ def getUserMessagesByEmail(token, email):
             messages = database_helper.getUserMessagesByEmail(email)
             messagesList = []
             for message in messages:
-                messagesList.append({'messageId': message[0], 'message': message[1], 'datePosted': message[2], 'wallEmail': message[3], 'writer': message[4]})
+                messageDict = {'messageId': message[0], 'message': message[1], 'datePosted': message[2], 'wallEmail': message[3], 'writer': message[4]}
+                fileName = database_helper.getFileNameByMessageId(message[0])
+                if fileName is not None:
+                    messageDict.update({'fileName': fileName})
+                    fileExtension = getFileExtension(fileName)
+                    fileType = getFileType(fileExtension)
+                    messageDict.update({'fileType': fileType})
+                messagesList.append(messageDict)                
             return json.dumps({'success': True, 'message': 'User messages retreived.', 'data': messagesList}), 200
         else:
             return json.dumps({'success': False, 'message': 'No such user.'}), 404
@@ -169,7 +207,9 @@ def postMessage(token, email):
     if signedInEmail is not None:
         if emailExists(email):
             if len(request.form['message']) > 0:
-                database_helper.insertMessage(signedInEmail, email, request.form['message'])
+                messageId = database_helper.insertMessage(signedInEmail, email, request.form['message'])
+                if len(request.files) > 0:
+                    uploadFile(request.files['file'], messageId)
                 return json.dumps({'success': True, 'message': 'Message posted.'}), 200
             else:
                 return json.dumps({'success': False, 'message': 'Form data missing or incorrect type.'}), 400
@@ -178,7 +218,25 @@ def postMessage(token, email):
     else:
         return json.dumps({'success': False, 'message': 'You are not signed in.'}), 405
 
-          
+def uploadFile(file, messageId):
+    if file and allowedFile(file.filename):
+        fileExtension = getFileExtension(file.filename)
+        fileName = createFileName(fileExtension)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], fileName))
+        database_helper.insertFile(fileName, messageId)
+
+def allowedFile(fileName):
+    if '.' in fileName:
+        fileExtension = getFileExtension(fileName)
+        return fileExtension in ALLOWED_IMAGE_EXTENSIONS or fileExtension in ALLOWED_VIDEO_EXTENSIONS or fileExtension in ALLOWED_AUDIO_EXTENSIONS
+    else:
+        return False
+
+@app.route('/uploads/<fileName>')
+def uploadedFile(fileName):
+    path = os.path.abspath(app.config['UPLOAD_FOLDER'])
+    return send_from_directory(path, fileName)
+
 @app.route('/api')
 def api():
     if request.environ.get('wsgi.websocket'):

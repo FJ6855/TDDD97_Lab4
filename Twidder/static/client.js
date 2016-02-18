@@ -31,7 +31,7 @@ var hideMessage = function()
     alertMessage.innerHTML = "";
 }
 
-var makeHttpRequest = function(type, url, dataString, callbackFunction)
+var makeHttpRequest = function(type, url, formData, callbackFunction)
 {
     var xhttp = new XMLHttpRequest();
 
@@ -56,9 +56,7 @@ var makeHttpRequest = function(type, url, dataString, callbackFunction)
 
     if (type == "POST")
     {
-	xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-	
-	xhttp.send(dataString);
+	xhttp.send(formData);
     }
     else
     {
@@ -80,9 +78,12 @@ var loginSubmit = function()
     var loginEmail = document.getElementById("loginEmail");
     var loginPassword = document.getElementById("loginPassword");
 
-    var dataString = "loginEmail=" + loginEmail.value + "&loginPassword=" + loginPassword.value;
+    var formData = new FormData();
 
-    makeHttpRequest("POST", "sign_in", dataString, function(response) {
+    formData.append("loginEmail", loginEmail.value);
+    formData.append("loginPassword", loginPassword.value);
+
+    makeHttpRequest("POST", "sign_in", formData, function(response) {
 	localStorage.setItem("userToken", response.data);
 	
 	loadSignedIn();
@@ -98,15 +99,17 @@ var signupSubmit = function()
     
     if (validPasswordLength(signupPassword.value) && validPasswordMatch(signupPassword.value, repeatPassword.value))
     {
-	var dataString = "signupEmail=" + document.getElementById("signupEmail").value +
-	    "&signupPassword=" + signupPassword.value +
-	    "&firstName=" + document.getElementById("firstName").value +
-	    "&lastName=" + document.getElementById("lastName").value +
-	    "&gender=" + document.getElementById("gender").value +
-	    "&city=" + document.getElementById("city").value + 
-	    "&country=" + document.getElementById("country").value;
+	var formData = new FormData();
 
-	makeHttpRequest("POST", "sign_up", dataString, function(response) {
+	formData.append("signupEmail", document.getElementById("signupEmail").value);
+	formData.append("signupPassword", signupPassword.value);
+	formData.append("firstName", document.getElementById("firstName").value);
+	formData.append("lastName", document.getElementById("lastName").value);
+	formData.append("gender", document.getElementById("gender").value);
+	formData.append("city", document.getElementById("city").value);
+	formData.append("country", document.getElementById("country").value);
+
+	makeHttpRequest("POST", "sign_up", formData, function(response) {
 	    displayMessage(response.message, "infoMessage");
 	    
 	    document.getElementById("signupForm").reset();
@@ -124,10 +127,12 @@ var changePasswordSubmit = function()
 
     if (validPasswordLength(newPassword.value) && validPasswordMatch(newPassword.value, repeatNewPassword.value))
     {
-	var dataString = "oldPassword=" + oldPassword.value + 
-	    "&newPassword=" + newPassword.value;
-	
-	makeHttpRequest("POST", "change_password/" + localStorage.getItem("userToken"), dataString, function(response) {
+	var formData = new FormData();
+
+	formData.append("oldPassword", oldPassword.value);
+	formData.append("newPassword", newPassword.value);
+
+	makeHttpRequest("POST", "change_password/" + localStorage.getItem("userToken"), formData, function(response) {
 	    displayMessage(response.message, "infoMessage");
 	    
 	    document.getElementById("changePasswordForm").reset();
@@ -140,14 +145,72 @@ var changePasswordSubmit = function()
 var homePostMessageSubmit = function()
 {
     var message = document.getElementById("homeMessage");
+    var file = document.getElementById("homeFile");
 
     getEmail(function(email) {
-	postMessage(message.value, email);
+	postMessage(message.value, email, file, function() {	    
+	    document.getElementById("homePostMessageForm").reset();
+	});
 
 	loadMessages(email, "homeMessages")
     });
 
     return false;
+}
+
+var browsePostMessageSubmit = function()
+{
+    var message = document.getElementById("browseMessage");
+    var file = document.getElementById("homeFile");
+    
+    postMessage(message.value, localStorage.getItem("currentBrowseEmail"), file, function() {	    
+	document.getElementById("browsePostMessageForm").reset();
+    });
+
+    loadMessages(localStorage.getItem("currentBrowseEmail"), "browseMessages");
+
+    return false;
+}
+
+var postMessage = function(message, email, file, callbackFunction)
+{	
+    var formData = new FormData();
+
+    formData.append("message", message);
+
+    var dataString = "message=" + message;
+    
+    if (file == undefined || (file != undefined && file.files[0] == undefined))
+    {	
+	makeHttpRequest("POST", "post_message/" + localStorage.getItem("userToken") + "/" + email, formData, function(response) {
+	    displayMessage(response.message, "infoMessage");
+
+	    callbackFunction();
+	});
+    }
+    else
+    {
+	if (file != undefined && file.files[0] != undefined && validFileSize(file.files[0].size))
+	{
+	    dataString += "&file=" + file.files[0];
+	    formData.append("file", file.files[0]);
+	    
+	    makeHttpRequest("POST", "post_message/" + localStorage.getItem("userToken") + "/" + email, formData, function(response) {
+		displayMessage(response.message, "infoMessage");
+
+		callbackFunction();
+	    });
+	}
+	else
+	{
+	    displayMessage("File size is too big. Max size allowed: 4Mb.", "errorMessage");
+	}
+    }    
+}   
+
+var validFileSize = function(fileSize)
+{
+    return (fileSize / 1000000 < 4); 
 }
 
 var searchProfileSubmit = function()
@@ -175,26 +238,6 @@ var showBrowseElements = function()
     {
 	browseElements[i].classList.remove("hideBrowseElement");
     }
-}
-
-var browsePostMessageSubmit = function()
-{
-    var message = document.getElementById("browseMessage");
-    
-    postMessage(message.value, localStorage.getItem("currentBrowseEmail"));
-
-    loadMessages(localStorage.getItem("currentBrowseEmail"), "browseMessages");
-
-    return false;
-}
-    
-var postMessage = function(message, email)
-{	
-    var dataString = "message=" + message;
-
-    makeHttpRequest("POST", "post_message/" + localStorage.getItem("userToken") + "/" + email, dataString, function(response) {
-	displayMessage(response.message, "infoMessage");	
-    });
 }
 
 var validPasswordLength = function(password)
@@ -277,12 +320,14 @@ var loadMessages = function(email, elementId)
 	
 	for (var i = 0; i < response.data.length; ++i)
 	{
-	    createMessage(response.data[i].writer, response.data[i].message, response.data[i].datePosted, elementId);
+	    var message = response.data[i];
+
+	    createMessage(message, elementId)
 	}
     });
 }
 
-var createMessage = function(writer, message, datePosted, elementId)
+var createMessage = function(message, elementId)
 {
     var container = document.createElement("DIV");
 
@@ -294,20 +339,10 @@ var createMessage = function(writer, message, datePosted, elementId)
 	event.dataTransfer.setData("writer", event.target.getElementsByTagName("H2")[0].innerHTML);
 	event.dataTransfer.setData("message", event.target.getElementsByTagName("P")[0].innerHTML);
     };
-    
-    container.ondrag = function(event)
-    {
-	console.log(event);/*
-	document.onmousemovement = function(event)
-	{
-	    console.log("asd");
-	}*/
-    };
-
 
     var header = document.createElement("H2");
 
-    var writerTextNode = document.createTextNode(writer + " : " + datePosted);
+    var writerTextNode = document.createTextNode(message.writer + " : " + message.datePosted);
     
     header.appendChild(writerTextNode);
 
@@ -315,11 +350,37 @@ var createMessage = function(writer, message, datePosted, elementId)
 
     var messageNode = document.createElement("P");
 
-    var messageTextNode = document.createTextNode(message);
+    var messageTextNode = document.createTextNode(message.message);
 
     messageNode.appendChild(messageTextNode);
 
     container.appendChild(messageNode);
+
+    if (message.hasOwnProperty('fileName'))
+    {
+	var fileTag;
+
+	if (message.fileType == 'image')
+	{
+	    fileTag = document.createElement('IMG');
+	}
+	else if (message.fileType == 'video')
+	{
+	    fileTag = document.createElement('VIDEO');
+	    fileTag.setAttribute("controls", "");
+	}
+	else if (message.fileType == 'audio')
+	{	    
+	    fileTag = document.createElement('AUDIO');
+	    fileTag.setAttribute("controls", "");
+	}
+
+	var src = 'uploads/' + message.fileName;
+	
+	fileTag.setAttribute("src", src);
+
+	container.appendChild(fileTag);
+    }
 
     document.getElementById(elementId).appendChild(container);
 }
@@ -425,6 +486,25 @@ var loadSignedOut = function()
     setupSignUpForm();
 }
 
+var addMessageOnDrop = function(element)
+{    
+    element.ondrop = function(event)
+    {
+	event.preventDefault();
+
+	var writer = event.dataTransfer.getData("writer");
+	var message = event.dataTransfer.getData("message");
+
+	if(writer != "" && message != "")
+	    event.target.value += 'Reply to: ' + writer + '\n' + message;
+    };
+
+    element.ondragover = function(event)
+    {
+	event.preventDefault();
+    };
+}
+
 var loadSignedIn = function()
 {
     displayView("profileView");
@@ -441,22 +521,8 @@ var loadSignedIn = function()
 
     document.getElementById("homePostMessageForm").onsubmit = homePostMessageSubmit;
     
-    document.getElementById("homeMessage").ondrop = function(event)
-    {
-	dragging = false;
-
-	event.preventDefault();
-
-	var writer = event.dataTransfer.getData("writer");
-	var message = event.dataTransfer.getData("message");
-	if(writer != "" && message != "")
-	    event.target.value += 'Reply to: ' + writer + '\n' + message;
-    };
-
-    document.getElementById("homeMessage").ondragover = function(event)
-    {
-	event.preventDefault();
-    };
+    addMessageOnDrop(document.getElementById("homeMessage"));
+    addMessageOnDrop(document.getElementById("browseMessage"));
 
     setupRefreshButton(document.getElementById("browseRefreshButton"), localStorage.getItem("currentBrowseEmail"), "browseMessages");
 
@@ -477,8 +543,6 @@ var loadSignedIn = function()
     
     webSocket.onmessage = function(message)
     {
-	console.log(message);
-	
 	makeHttpRequest("GET", "sign_out/" + localStorage.getItem("userToken"), "", function(response) {
 	    localStorage.removeItem("userToken");
 	    

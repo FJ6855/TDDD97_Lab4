@@ -145,12 +145,13 @@
 		<div class="inputContainer">
 		  <textarea id="homeMessage" name="homeMessage" placeholder="Write message here" required></textarea>
 		</div>
-	      </div>      
+	      </div>     
 	      <div class="formRow">
 		<div class="inputContainer">
-		  <button id="homePostMessageSubmit" name="homePostMessageSubmit" type="submit">Post message</button>
+		  <input type="file" id="homeFile" name="homeFile" accept=".jpg,.jpeg,.png,.gif,.mpg,.mp4,.avi,.mp3,.wma,.wav"/>  
+		  <button id="homePostMessageSubmit" name="homePostMessageSubmit" type="submit">Post message</button>	
 		</div>
-	      </div>
+	      </div> 
 	    </form>
 	  </div>
 	  <div id="homeMessageWall" class="messageWall">
@@ -192,6 +193,7 @@
 	      </div>      
 	      <div class="formRow">
 		<div class="inputContainer">
+		  <input type="file" id="browseFile" name="homeFile" accept=".jpg,.jpeg,.png,.gif,.mpg,.mp4,.avi,.mp3,.wma,.wav"/>  
 		  <button id="browserPostMessageSubmit" name="browserPostMessageSubmit" type="submit">Post message</button>
 		</div>
 	      </div>
