@@ -1,5 +1,7 @@
 var webSocket;
 
+//var page = require("page");
+
 var displayView = function(viewId)
 {
     var alertMessageView = document.getElementById("alertMessageView");
@@ -86,7 +88,7 @@ var loginSubmit = function()
     makeHttpRequest("POST", "sign_in", formData, function(response) {
 	localStorage.setItem("userToken", response.data);
 	
-	loadSignedIn();
+	page.redirect("/home");
     }); 
 		
     return false;
@@ -250,34 +252,34 @@ var validPasswordMatch = function(repeatPassword, password)
     return (password == repeatPassword);
 }
 
-var menuItemClick = function(menuItem)
+var setSelectedMenuItem = function(menuItemId)
 {
     var selectedMenuItem = document.getElementsByClassName("selected");
 
     selectedMenuItem[0].classList.remove("selected");
 
-    menuItem.classList.add("selected");
+    document.getElementById(menuItemId).classList.add("selected");
+}
 
-    var selectedContent = document.getElementsByClassName("selectedContent");
-
-    selectedContent[0].classList.remove("selectedContent");
-
-    var view;
+var menuItemClick = function(menuItem)
+{
+    setSelectedMenuItem(menuItem.getAttribute("id"));
 
     if (menuItem.getAttribute("id") == "homeButton")
     {
-	view = document.getElementById("homeView");
+	history.pushState(null, null, "/home");
+	page.redirect("/home");
     }
     else if (menuItem.getAttribute("id") == "browseButton")
     {
-	view = document.getElementById("browseView");	    
+	history.pushState(null, null, "/browse");    
+	page.redirect("/browse");
     }
     else if (menuItem.getAttribute("id") == "accountButton")
     {
-	view = document.getElementById("accountView"); 
+	history.pushState(null, null, "/account");
+	page.redirect("/account");
     }
-    
-    view.classList.add("selectedContent");
 }
 
 var loadProfileInformation = function(email, callbackFunction)
@@ -553,14 +555,71 @@ var loadSignedIn = function()
     };
 }
 
+var isUserSignedIn = function()
+{
+    return localStorage.getItem("userToken") !== null;
+}
+
 window.onload = function()
 {
-    if (localStorage.getItem("userToken") === null)
-    {	
-	loadSignedOut();
-    }
-    else
-    {
-	loadSignedIn();
-    }
+    page('/', function() {
+	if (isUserSignedIn())
+	{
+	    page.redirect("/home");
+	}
+	else
+	{
+	    loadSignedOut();
+	}
+    });
+
+    page('/home', function() {
+
+	if (isUserSignedIn())
+	{
+	    loadSignedIn();
+
+	    setSelectedMenuItem("homeButton");
+
+	    document.getElementById("homeView").classList.add("selectedContent");
+	}
+	else
+	{
+	    page.redirect("/");
+	}
+    });
+
+    page('/browse', function() {
+
+	if (isUserSignedIn())
+	{
+	    loadSignedIn();
+
+	    setSelectedMenuItem("browseButton");
+
+	    document.getElementById("browseView").classList.add("selectedContent");
+	}
+	else
+	{
+	    page.redirect("/");
+	}
+    });
+
+    page('/account', function() {
+
+	if (isUserSignedIn())
+	{
+	    loadSignedIn();
+
+	    setSelectedMenuItem("accountButton");
+
+	    document.getElementById("accountView").classList.add("selectedContent");
+	}
+	else
+	{
+	    page.redirect("/");
+	}
+    });
+
+    page.start();
 }

@@ -90,6 +90,9 @@ def emailExists(email):
         return True
 
 @app.route('/')
+@app.route('/home')
+@app.route('/browse')
+@app.route('/account')
 def index():
     return app.send_static_file('client.html')
 
