@@ -14,6 +14,7 @@ CREATE TABLE users (
 
 CREATE TABLE signedInUsers (
        token VARCHAR(36) PRIMARY KEY,
+       secretKey VARCHAR(36) NOT NULL,
        email VARCHAR(200) NOT NULL,
        FOREIGN KEY (email) REFERENCES users(email));
 
@@ -31,6 +32,16 @@ CREATE TABLE files (
        fileName varchar(10) NOT NULL,
        messageId INTEGER NOT NULL,
        FOREIGN KEY (messageId) REFERENCES messages(messageId));
+
+CREATE TABLE views (
+       viewId INTEGER PRIMARY KEY AUTOINCREMENT,
+       viewDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+       userEmail VARCHAR(200) NOT NULL,
+       wallEmail VARCHAR(200) NOT NULL,
+       FOREIGN KEY (userEmail) REFERENCES users(email),
+       FOREIGN KEY (wallEmail) REFERENCES users(email));
+       
+       
 
        
        

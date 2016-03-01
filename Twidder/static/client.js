@@ -1,6 +1,7 @@
 var webSocket;
-
-//var page = require("page");
+var postsChart;
+var postsChartTotal;
+var viewsChart;
 
 var displayView = function(viewId)
 {
@@ -58,6 +59,8 @@ var makeHttpRequest = function(type, url, formData, callbackFunction)
 
     if (type == "POST")
     {
+	console.log(formData);
+
 	xhttp.send(formData);
     }
     else
@@ -72,6 +75,8 @@ var signOut = function()
 	localStorage.removeItem("userToken");
 	
 	loadSignedOut();
+	    
+	webSocket.close();
     });
 }
 
@@ -86,8 +91,9 @@ var loginSubmit = function()
     formData.append("loginPassword", loginPassword.value);
 
     makeHttpRequest("POST", "sign_in", formData, function(response) {
-	localStorage.setItem("userToken", response.data);
-	
+	localStorage.setItem("userToken", response.data.token);
+	localStorage.setItem("secretKey", response.data.secretKey);
+
 	page.redirect("/home");
     }); 
 		
@@ -227,9 +233,22 @@ var searchProfileSubmit = function()
 	localStorage.setItem("currentBrowseEmail", profileEmail.value);
 
 	showBrowseElements();
+
+	addViewToWall(profileEmail.value);
     });
 
     return false;
+}
+
+var addViewToWall = function(wallEmail)
+{
+    var formData = new FormData();
+
+    formData.append('wallEmail', wallEmail);
+
+    makeHttpRequest("POST", "post_view/" + localStorage.getItem("userToken"), formData, function(response) {
+	console.log(response.message);
+    });
 }
 
 var showBrowseElements = function()
@@ -507,6 +526,82 @@ var addMessageOnDrop = function(element)
     };
 }
 
+var updateUsersCounter = function(data)
+{
+    document.getElementById("usersCounter").innerHTML = "Users online: " + data;
+}
+
+var updateMessageCounter = function(data)
+{
+    var context = document.getElementById("postsChart").getContext("2d");
+    
+    if (postsChart !== undefined)
+	postsChart.destroy();
+
+    postsChart = new Chart(context).Doughnut(data, {animationSteps: 80, animationEasing: "easeInOutQuart", legendTemplate: '<ul class=\"<%=name.toLowerCase()%>-legend\"><% for (var i=0; i<segments.length; i++){%><li><span style=\"background-color:<%=segments[i].fillColor%>\"></span><%if(segments[i].label){%><%=segments[i].label%><%}%></li><%}%></ul>'});
+
+    var legendHTML = postsChart.generateLegend();
+
+    document.getElementById("postsStatsLegend").innerHTML = legendHTML;
+}
+
+var updateMessageCounterTotal = function(data)
+{
+    document.getElementById("totalPosts").innerHTML = '<span>Total</span><br/>' + data;
+}
+
+var updateViewsCounter = function(data)
+{
+    var context = document.getElementById("viewsChart").getContext("2d");
+
+    if (viewsChart !== undefined)
+	viewsChart.destroy();
+
+    viewsChart = new Chart(context).Line(data, {});
+}
+
+var setupWebSocket = function() 
+{
+    webSocket = new WebSocket("ws://127.0.0.1:5000/api");
+    
+    webSocket.onopen = function()
+    {
+	getEmail(function(email) {
+	    webSocket.send(email);
+	});
+    };
+    
+    webSocket.onmessage = function(message)
+    {
+	console.log("Web socket received message");
+
+	var response = JSON.parse(message.data);
+	
+	console.log(response);
+
+	if (response.type == 'signInStatus' && response.data == 'logout')
+	{
+	    signOut();
+	}
+	else if (response.type == 'usersCounter')
+	{
+	    updateUsersCounter(response.data);
+	}
+	else if (response.type == 'viewCounter')
+	{
+	    updateViewsCounter(response.data);
+	}
+	else if (response.type == 'messageCounter')
+	{
+	    updateMessageCounter(response.data);
+	}
+	else if (response.type == 'messageCounterTotal')
+	{
+	    updateMessageCounterTotal(response.data);
+	}
+    };
+}
+
 var loadSignedIn = function()
 {
     displayView("profileView");
@@ -533,26 +628,8 @@ var loadSignedIn = function()
     document.getElementById("browsePostMessageForm").onsubmit = browsePostMessageSubmit;
 
     document.getElementById("signOut").onclick = signOut;
-    
-    webSocket = new WebSocket("ws://127.0.0.1:5000/api");
-    
-    webSocket.onopen = function()
-    {
-	getEmail(function(email) {
-	    webSocket.send(email);
-	});
-    };
-    
-    webSocket.onmessage = function(message)
-    {
-	makeHttpRequest("GET", "sign_out/" + localStorage.getItem("userToken"), "", function(response) {
-	    localStorage.removeItem("userToken");
-	    
-	    loadSignedOut();
-	    
-	    webSocket.close();
-	});
-    };
+
+    setupWebSocket();
 }
 
 var isUserSignedIn = function()
@@ -574,7 +651,6 @@ window.onload = function()
     });
 
     page('/home', function() {
-
 	if (isUserSignedIn())
 	{
 	    loadSignedIn();
@@ -590,7 +666,6 @@ window.onload = function()
     });
 
     page('/browse', function() {
-
 	if (isUserSignedIn())
 	{
 	    loadSignedIn();
@@ -606,7 +681,6 @@ window.onload = function()
     });
 
     page('/account', function() {
-
 	if (isUserSignedIn())
 	{
 	    loadSignedIn();

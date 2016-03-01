@@ -1,5 +1,7 @@
 import os
 import json
+import datetime
+import hmac, hashlib, base64
 from flask import Flask, request, send_from_directory
 from flask.ext.bcrypt import Bcrypt
 from wtforms import Form, TextField, PasswordField, validators
@@ -51,6 +53,9 @@ def createToken():
         token += letters[randint(0,len(letters) - 1)]
     return token
 
+def createSecretKey():
+    return createToken()
+
 def getFileExtension(fileName):
     return fileName.rsplit('.', 1)[1]
 
@@ -89,6 +94,91 @@ def emailExists(email):
     else:
         return True
 
+def sendUsersCounter():
+    database_helper.connectToDatabase()
+    usersCounter = database_helper.getNumberOfSignedInUsers();
+    for key in webSockets:
+        webSockets[key].send(json.dumps({'type': 'usersCounter', 'data': usersCounter}))
+
+def sendUserPostData(email):
+    database_helper.connectToDatabase()
+    numberOfPostsByUser = database_helper.getNumberOfPostsByUserOnWall(email, email)
+    data = [{'value': numberOfPostsByUser, 'color': '#9DE0AD', 'label': email}]
+    topTwo = database_helper.getTopTwoNumberOfPostsOnWallByOthers(email)
+    numberOfPostsOnWall = database_helper.getNumberOfPostsOnWall(email)
+    numberOfPostsByOthers = numberOfPostsOnWall - numberOfPostsByUser
+    colors = ['#45ADA8', '#4F7A79']
+    colorIndex = 0
+    for writer in topTwo:
+        data.append({'value': writer[1], 'color': colors[colorIndex], 'label': writer[0]})
+        numberOfPostsByOthers -= writer[1]
+        colorIndex += 1
+    if numberOfPostsByOthers > 0:
+        data.append({'value': numberOfPostsByOthers, 'color': '#348487', 'label': 'others'})
+    webSockets[email].send(json.dumps({'type': 'messageCounter', 'data': data}))
+
+def sendUserPostTotalData(email):
+    database_helper.connectToDatabase()
+    numberOfPostsOnWall = database_helper.getNumberOfPostsOnWall(email)
+    webSockets[email].send(json.dumps({'type': 'messageCounterTotal', 'data': numberOfPostsOnWall}))
+
+def sendUserViewData(email):
+    database_helper.connectToDatabase()
+    views = database_helper.getViewsOnWallDuringLast6Months(email)
+    posts = database_helper.getPostsOnWallDuringLast6Months(email)
+    data = {'labels': ['', '', '', '', '', ''], 'datasets': []}
+    today = datetime.date.today()
+    for i in range(0, 6):
+        data['labels'][5 - i] = getMonthName(today.strftime('%m'))
+        newMonth = today.month
+        newMonth -= 1
+        if newMonth == 0:
+            newMonth = 12
+        today = today.replace(month=newMonth)
+    data['datasets'].append({'label': 'Number of views', 'data': [0, 0, 0, 0, 0, 0]})
+    data['datasets'].append({'label': 'Number of posts', 'data': [0, 0, 0, 0, 0, 0]})
+    data['datasets'][0]['fillColor'] = 'rgba(200,200,200,0.2)'
+    data['datasets'][0]['strokeColor'] = 'rgba(200,200,200,1)'
+    data['datasets'][0]['pointColor'] = 'rgba(200,200,200,1)'
+    data['datasets'][1]['fillColor'] = 'rgba(157,224,173,0.2)'
+    data['datasets'][1]['strokeColor'] = 'rgba(157,224,173,1)'
+    data['datasets'][1]['pointColor'] = 'rgba(157,224,173,1)'
+    for view in views:
+        dataIndex = data['labels'].index(getMonthName(view[1]))
+        data['datasets'][0]['data'][dataIndex] = view[2]
+    for post in posts:
+        dataIndex = data['labels'].index(getMonthName(post[1]))
+        data['datasets'][1]['data'][dataIndex] = post[2]
+    webSockets[email].send(json.dumps({'type': 'viewCounter', 'data': data}))
+
+def getMonthName(month):
+    if month == "01":
+        return "January"
+    elif month == "02":
+        return "February"
+    elif month == "03":
+        return "March"
+    elif month == "04":
+        return "April"
+    elif month == "05":
+        return "May"
+    elif month == "06":
+        return "June"
+    elif month == "07":
+        return "July"
+    elif month == "08":
+        return "August"
+    elif month == "09":
+        return "September"
+    elif month == "10":
+        return "October"
+    elif month == "11":
+        return "November"
+    elif month == "12":
+        return "December"
+    else:
+        return "Invalid month number"
+
 @app.route('/')
 @app.route('/home')
 @app.route('/browse')
@@ -100,12 +190,13 @@ def index():
 def signIn():
     if validLogin(request.form['loginEmail'], request.form['loginPassword']):
         token = createToken()
-        result = database_helper.insertSignedInUser(token, request.form['loginEmail']);
+        secretKey = createSecretKey()
+        result = database_helper.insertSignedInUser(token, secretKey, request.form['loginEmail']);
         if result == True:
             global webSockets
             if webSockets.has_key(request.form['loginEmail']):
-                webSockets[request.form['loginEmail']].send("logout");
-            return json.dumps({'success': True, 'message': 'Successfully signed in.', 'data': token}), 200
+                webSockets[request.form['loginEmail']].send(json.dumps({'type': 'signInStatus', 'data': 'logout'}));
+            return json.dumps({'success': True, 'message': 'Successfully signed in.', 'data': {'token': token, 'secretKey': secretKey}}), 200
         else:
             return json.dumps({'success': False, 'message': 'Could not sign in user.'}), 503
     else:
@@ -135,6 +226,7 @@ def signOut(token):
         if result == True:
             global webSockets
             del webSockets[email]
+            sendUsersCounter();
             return json.dumps({'success': True, 'message': 'Successfully signed out.'}), 200
         else:
             return json.dumps({'success': False, 'message': 'Could not delete signed in user.'}), 503
@@ -213,6 +305,8 @@ def postMessage(token, email):
                 messageId = database_helper.insertMessage(signedInEmail, email, request.form['message'])
                 if len(request.files) > 0:
                     uploadFile(request.files['file'], messageId)
+                sendUserPostData(email)
+                sendUserPostTotalData(email)
                 return json.dumps({'success': True, 'message': 'Message posted.'}), 200
             else:
                 return json.dumps({'success': False, 'message': 'Form data missing or incorrect type.'}), 400
@@ -220,6 +314,19 @@ def postMessage(token, email):
             return json.dumps({'success': False, 'message': 'No such user.'}), 404
     else:
         return json.dumps({'success': False, 'message': 'You are not signed in.'}), 405
+
+@app.route('/post_view/<token>', methods=['POST'])
+def postView(token):
+    signedInEmail = database_helper.getUserEmailByToken(token)
+    if signedInEmail is not None:
+        if emailExists(request.form['wallEmail']):
+            database_helper.insertView(request.form['wallEmail'], signedInEmail)
+            sendUserViewData(request.form['wallEmail'])
+            return json.dumps({'success': True, 'message': 'View added.'}), 200
+        else:
+            return json.dumps({'success': False, 'message': 'No such user.'}), 404
+    else:
+        return json.dumps({'success': False, 'message': 'You are not signed in.'}), 405   
 
 def uploadFile(file, messageId):
     if file and allowedFile(file.filename):
@@ -244,12 +351,16 @@ def uploadedFile(fileName):
 def api():
     if request.environ.get('wsgi.websocket'):
         ws = request.environ['wsgi.websocket']
-        message = ws.receive()
+        email = ws.receive()
         global webSockets
-        webSockets[message] = ws
+        webSockets[email] = ws
+        sendUsersCounter()
+        sendUserPostData(email)
+        sendUserPostTotalData(email)
+        sendUserViewData(email)
         try:
             while True:
-                message = ws.receive()
+                email = ws.receive()
         except WebSocketError:
             print "Web socket error"
     return ""

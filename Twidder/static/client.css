@@ -66,6 +66,7 @@ body
     padding: 10px;
     background-color: #fff;
     margin-bottom: 10px;
+    clear: both;
 }
 
 .menuItem
@@ -151,41 +152,6 @@ div.formRow
     clear: both;
 }
 
-div.formRow .labelContainer
-{
-    padding: 5px 0;
-    width: 70px;
-    float: left;
-}
-
-div.formRow .inputContainer
-{
-    float: right;
-    position: relative;
-}
-
-div.formRow .inputContainer input, select
-{
-    width: 150px;
-}
-
-div.formRow .inputContainer input
-{
-    border: 1px solid #aaa;
-}
-
-div.formRow .inputContainer .inputError
-{
-    border: 1px solid #ff0000;
-}
-
-div.formRow .inputContainer .inputErrorMessage
-{
-    position: absolute;
-    top: 0px;
-    left: 0px;
-}
-
 div.content
 {
     display: none;
@@ -197,17 +163,6 @@ div.content
 div.selectedContent
 {
     display: block;
-}
-
-#changePassword
-{
-    width: 260px;
-    padding: 10px;
-}
-
-#changePassword div.formRow .labelContainer
-{
-    width: 100px;
 }
 
 #homeView
@@ -254,17 +209,7 @@ p
     height: auto;
 }
 
-.postMessageForm div.formRow .labelContainer
-{
-    float: none;
-}
-
-.postMessageForm div.formRow .inputContainer
-{
-    float: none;
-}
-
-.postMessageForm div.formRow .inputContainer textarea
+.postMessageForm div.formRow textarea
 {
     width: 312px;
     height: 98px;
@@ -273,6 +218,11 @@ p
     font-size: 12px;
     margin: 0;
     padding: 3px;
+}
+
+.postMessageForm div.formRow button, input
+{
+    float: none;
 }
 
 .messageWall
@@ -372,4 +322,142 @@ div.messageContainer img, video
 {
     width: 208px;
     margin-right: 5px;
+}
+
+label
+{
+    display: block;
+    padding: 5px 0;
+    width: 70px;
+    float: left;
+}
+
+input, select
+{
+    display: block;
+    width: 150px;
+    float: right;
+    position: relative;
+}
+
+select
+{
+    height: 25px;
+}
+
+input
+{
+    height: 18px;
+    float: right;
+    position: relative;
+    border: 1px solid #aaa;
+}
+
+button
+{
+    height: 25px;
+    float: right;
+}
+
+input[type="file"]
+{ 
+    height: auto;
+}
+
+#accountView
+{
+    background-color: transparent;
+}
+
+#changePassword
+{
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #fff;
+}
+
+#changePasswordForm
+{
+    width: 260px;
+}
+
+#changePasswordForm label
+{
+    width: 100px;
+}
+
+#userStats
+{
+    padding: 10px;
+    background-color: #fff;
+}
+
+#usersCounter 
+{
+    padding: 5px;
+    background-color: #fff;
+    float: right;
+    margin-bottom: 10px;
+    font-family: Arial;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+#postsStatsLegend
+{
+    margin-right: 100px;
+    margin-top: 120px;
+    float: right;
+}
+
+#postsStats
+{
+    height: 350px;
+    clear: both;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+#postsStats ul
+{
+    list-style-type: none;
+    font-family: Arial;
+    font-size: 13px;
+}
+
+#postsStats ul li
+{
+    margin-bottom: 3px;
+}
+
+#postsStats ul li span
+{
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 5px;
+}
+
+#totalPosts
+{
+    position: absolute;
+    top: 145px;
+    left: 123px;
+    font-family: Arial;
+    font-size: 21px;
+    text-align: center;
+}
+
+#totalPosts span
+{
+    font-weight: bold;
+}
+
+#postsChart
+{
+    position: absolute;
+}
+
+#postsChartTotal
+{
 }

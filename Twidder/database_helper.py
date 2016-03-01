@@ -68,17 +68,43 @@ def getFileNameByMessageId(messageId):
     else:
         return None
 
+def getNumberOfSignedInUsers():
+    numberOfUsers = executeSelect('select COUNT(token) from signedInUsers', (), True)
+    return numberOfUsers[0]
+
+def getNumberOfPostsByUserOnWall(writer, wall):
+    numberOfPosts = executeSelect('select COUNT(*) from messages where wallEmail = ? and writer = ?', (wall, writer), True)
+    return numberOfPosts[0] 
+
+def getTopTwoNumberOfPostsOnWallByOthers(wall):
+    return executeSelect('select writer, COUNT(*) as numberOfPosts from messages where wallEmail = ? and writer != ? group by writer order by numberOfPosts desc limit 2', (wall, wall))
+    
+def getNumberOfPostsOnWall(wall):
+    numberOfPosts = executeSelect('select COUNT(*) from messages where wallEmail = ?', (wall,), True)
+    return numberOfPosts[0]
+
+def getPostsOnWallDuringLast6Months(wall):
+    posts = executeSelect('select strftime(\'%Y\', datePosted) as postYear, strftime(\'%m\', datePosted) as postMonth, COUNT(*) from messages where wallEmail = ? and datePosted between datetime(\'now\', \'-6 months\') and datetime(\'now\', \'localtime\') group by postMonth order by postYear asc, postMonth asc', (wall,))
+    return posts
+
+def getViewsOnWallDuringLast6Months(wall):
+    views = executeSelect('select strftime(\'%Y\', viewDate) as viewYear, strftime(\'%m\', viewDate) as viewMonth, COUNT(*) from views where wallEmail = ? and viewDate between datetime(\'now\', \'-6 months\') and datetime(\'now\', \'localtime\') group by viewMonth order by viewYear asc, viewMonth asc', (wall,))
+    return views
+
 def insertUser(email, firstName, lastName, gender, city, country, passwordHash):
     return executeChange('insert into users values (?, ?, ?, ?, ?, ?, ?)', (email, passwordHash, firstName, lastName, gender, city, country))
 
-def insertSignedInUser(token, email):
-    return executeChange('insert into signedInUsers values (?, ?)', (token, email))
+def insertSignedInUser(token, secretKey, email):
+    return executeChange('insert into signedInUsers values (?, ?, ?)', (token, secretKey, email))
 
 def insertMessage(writerEmail, email, message):
     return executeChangeAndGetId('insert into messages (message, wallEmail, writer) values (?, ?, ?)', (message, email, writerEmail))
 
 def insertFile(fileName, messageId):
     return executeChange('insert into files (fileName, messageId) values (?, ?)', (fileName, messageId))
+
+def insertView(wallEmail, email):
+    return executeChange('insert into views (wallEmail, userEmail) values (?, ?)', (wallEmail, email))
 
 def deleteSignedInUser(token):
     return executeChange('delete from signedInUsers where token = ?', (token,))
