@@ -91,6 +91,10 @@ def getViewsOnWallDuringLast6Months(wall):
     views = executeSelect('select strftime(\'%Y\', viewDate) as viewYear, strftime(\'%m\', viewDate) as viewMonth, COUNT(*) from views where wallEmail = ? and viewDate between datetime(\'now\', \'-6 months\') and datetime(\'now\', \'localtime\') group by viewMonth order by viewYear asc, viewMonth asc', (wall,))
     return views
 
+def getSecretKeyByToken(token):
+    secretKey = executeSelect('select secretKey from signedInUsers where token = ?', (token,), True)
+    return secretKey[0]
+
 def insertUser(email, firstName, lastName, gender, city, country, passwordHash):
     return executeChange('insert into users values (?, ?, ?, ?, ?, ?, ?)', (email, passwordHash, firstName, lastName, gender, city, country))
 

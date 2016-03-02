@@ -34,7 +34,33 @@ var hideMessage = function()
     alertMessage.innerHTML = "";
 }
 
-var makeHttpRequest = function(type, url, formData, callbackFunction)
+var createHash = function(data)
+{    
+    var shaObj = new jsSHA("SHA-256", "TEXT");
+    
+    // set secret key as hash-key
+    shaObj.setHMACKey(localStorage.getItem("secretKey"), "TEXT");
+        
+    var i = 0;
+
+    for (var key in data)
+    {
+	if (data.hasOwnProperty(key))
+	{
+	    console.log(key + " : " + data[key]);
+	    if (i == 0)
+		shaObj.update(key + "=" + data[key]);
+	    else
+		shaObj.update("&" + key + "=" + data[key]);
+
+	    ++i;
+	}
+    }
+
+    return shaObj.getHMAC("HEX");
+}
+
+var makeHttpRequest = function(type, url, parameters, data, hash, callbackFunction)
 {
     var xhttp = new XMLHttpRequest();
 
@@ -42,6 +68,8 @@ var makeHttpRequest = function(type, url, formData, callbackFunction)
     {
 	if (xhttp.readyState == 4)
 	{
+	    console.log(xhttp.responseText);
+
 	    var response = JSON.parse(xhttp.responseText);
 	    
 	    if (response.success)
@@ -54,13 +82,26 @@ var makeHttpRequest = function(type, url, formData, callbackFunction)
 	    }
 	}
     };
+    
+    url = "http://127.0.0.1:5000/" + url;
 
-    xhttp.open(type, "http://127.0.0.1:5000/" + url, true);
+    if (parameters != "")
+	url += "/" + parameters;
+	
+    if (hash != "")
+	url += "/" + hash;
+    
+    xhttp.open(type, url, true);
 
     if (type == "POST")
     {
-	console.log(formData);
-
+	var formData = new FormData();
+	
+	for (var key in data)
+	{
+	    formData.append(key, data[key]);
+	}
+	
 	xhttp.send(formData);
     }
     else
@@ -71,7 +112,9 @@ var makeHttpRequest = function(type, url, formData, callbackFunction)
 
 var signOut = function()
 {
-    makeHttpRequest("GET", "sign_out/" + localStorage.getItem("userToken"), "", function(response) {
+    var hash = createHash({'token': localStorage.getItem("userToken")});
+
+    makeHttpRequest("GET", "sign_out", localStorage.getItem("userToken"), "", hash, function(response) {
 	localStorage.removeItem("userToken");
 	
 	loadSignedOut();
@@ -85,12 +128,12 @@ var loginSubmit = function()
     var loginEmail = document.getElementById("loginEmail");
     var loginPassword = document.getElementById("loginPassword");
 
-    var formData = new FormData();
+    var data = {
+	loginEmail: loginEmail.value,
+	loginPassword: loginPassword.value,
+    };
 
-    formData.append("loginEmail", loginEmail.value);
-    formData.append("loginPassword", loginPassword.value);
-
-    makeHttpRequest("POST", "sign_in", formData, function(response) {
+    makeHttpRequest("POST", "sign_in", "", data, "", function(response) {
 	localStorage.setItem("userToken", response.data.token);
 	localStorage.setItem("secretKey", response.data.secretKey);
 
@@ -107,17 +150,17 @@ var signupSubmit = function()
     
     if (validPasswordLength(signupPassword.value) && validPasswordMatch(signupPassword.value, repeatPassword.value))
     {
-	var formData = new FormData();
+	var data = {
+	    signupEmail: document.getElementById("signupEmail").value,
+	    signupPassword: signupPassword.value,
+	    firstName: document.getElementById("firstName").value,
+	    lastName: document.getElementById("lastName").value,
+	    gender: document.getElementById("gender").value,
+	    city: document.getElementById("city").value,
+	    country: document.getElementById("country").value,
+	};
 
-	formData.append("signupEmail", document.getElementById("signupEmail").value);
-	formData.append("signupPassword", signupPassword.value);
-	formData.append("firstName", document.getElementById("firstName").value);
-	formData.append("lastName", document.getElementById("lastName").value);
-	formData.append("gender", document.getElementById("gender").value);
-	formData.append("city", document.getElementById("city").value);
-	formData.append("country", document.getElementById("country").value);
-
-	makeHttpRequest("POST", "sign_up", formData, function(response) {
+	makeHttpRequest("POST", "sign_up", "", data, "", function(response) {
 	    displayMessage(response.message, "infoMessage");
 	    
 	    document.getElementById("signupForm").reset();
@@ -135,12 +178,14 @@ var changePasswordSubmit = function()
 
     if (validPasswordLength(newPassword.value) && validPasswordMatch(newPassword.value, repeatNewPassword.value))
     {
-	var formData = new FormData();
+	var data = {
+	    oldPassword: oldPassword.value,
+	    newPassword: newPassword.value,
+	};
 
-	formData.append("oldPassword", oldPassword.value);
-	formData.append("newPassword", newPassword.value);
+	var hash = createHash({token: localStorage.getItem("userToken"), oldPassword: oldPassword.value, newPassword: newPassword.value});
 
-	makeHttpRequest("POST", "change_password/" + localStorage.getItem("userToken"), formData, function(response) {
+	makeHttpRequest("POST", "change_password", localStorage.getItem("userToken"), data, hash, function(response) {
 	    displayMessage(response.message, "infoMessage");
 	    
 	    document.getElementById("changePasswordForm").reset();
@@ -182,15 +227,13 @@ var browsePostMessageSubmit = function()
 
 var postMessage = function(message, email, file, callbackFunction)
 {	
-    var formData = new FormData();
+    var data = {message: message};
 
-    formData.append("message", message);
-
-    var dataString = "message=" + message;
-    
+    var hash = createHash({token: localStorage.getItem("userToken"), email: email, message: message});
+  
     if (file == undefined || (file != undefined && file.files[0] == undefined))
     {	
-	makeHttpRequest("POST", "post_message/" + localStorage.getItem("userToken") + "/" + email, formData, function(response) {
+	makeHttpRequest("POST", "post_message", localStorage.getItem("userToken") + "/" + email, data, hash, function(response) {
 	    displayMessage(response.message, "infoMessage");
 
 	    callbackFunction();
@@ -200,10 +243,9 @@ var postMessage = function(message, email, file, callbackFunction)
     {
 	if (file != undefined && file.files[0] != undefined && validFileSize(file.files[0].size))
 	{
-	    dataString += "&file=" + file.files[0];
-	    formData.append("file", file.files[0]);
+	    data['file'] = file.files[0];
 	    
-	    makeHttpRequest("POST", "post_message/" + localStorage.getItem("userToken") + "/" + email, formData, function(response) {
+	    makeHttpRequest("POST", "post_message", localStorage.getItem("userToken") + "/" + email, data, hash, function(response) {
 		displayMessage(response.message, "infoMessage");
 
 		callbackFunction();
@@ -242,11 +284,11 @@ var searchProfileSubmit = function()
 
 var addViewToWall = function(wallEmail)
 {
-    var formData = new FormData();
+    var data = {wallEmail: wallEmail};
 
-    formData.append('wallEmail', wallEmail);
+    var hash = createHash({token: localStorage.getItem("userToken"), wallEmail: wallEmail});
 
-    makeHttpRequest("POST", "post_view/" + localStorage.getItem("userToken"), formData, function(response) {
+    makeHttpRequest("POST", "post_view", localStorage.getItem("userToken"), data, hash, function(response) {
 	console.log(response.message);
     });
 }
@@ -303,7 +345,10 @@ var menuItemClick = function(menuItem)
 
 var loadProfileInformation = function(email, callbackFunction)
 {
-    makeHttpRequest("GET", "get_user_data/" + localStorage.getItem("userToken") + "/" + email, "", function(response) {
+    console.log("load profile");
+    var hash = createHash({token: localStorage.getItem("userToken"), email: email});
+
+    makeHttpRequest("GET", "get_user_data", localStorage.getItem("userToken") + "/" + email, "", hash, function(response) {
 	var profileInformation = {
 	    name: response.data.firstName + " " + response.data.lastName,
 	    email: response.data.email,
@@ -336,7 +381,9 @@ var appendSearchProfileInformation = function(profileInformation)
 
 var loadMessages = function(email, elementId)
 {
-    makeHttpRequest("GET", "get_user_messages/" + localStorage.getItem("userToken") + "/" + email, "", function(response) {
+    var hash = createHash({token: localStorage.getItem("userToken"), email: email});
+
+    makeHttpRequest("GET", "get_user_messages", localStorage.getItem("userToken") + "/" + email, "", hash, function(response) {
 	document.getElementById(elementId).innerHTML = "";
 	
 	for (var i = 0; i < response.data.length; ++i)
@@ -408,7 +455,9 @@ var createMessage = function(message, elementId)
 
 var getEmail = function(callbackFunction)
 {
-    makeHttpRequest("GET", "get_user_data/" + localStorage.getItem("userToken"), "", function(response) {
+    var hash = createHash({token: localStorage.getItem("userToken")});
+
+    makeHttpRequest("GET", "get_user_data", localStorage.getItem("userToken"), "", hash, function(response) {
 	callbackFunction(response.data.email);
     });
 }
