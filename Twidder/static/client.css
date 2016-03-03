@@ -296,7 +296,9 @@ div.messageContainer img, video
 #profileEmail
 {
     width: 485px;
+    height: 21px;
     margin-right: 10px;
+    float: left;
 }
 
 #submitSearchProfile
@@ -456,8 +458,4 @@ input[type="file"]
 #postsChart
 {
     position: absolute;
-}
-
-#postsChartTotal
-{
 }

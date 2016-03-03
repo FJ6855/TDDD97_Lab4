@@ -1,6 +1,6 @@
 import os
 import json
-import datetime
+import datetime, time
 import hmac, hashlib, base64
 from flask import Flask, request, send_from_directory
 from flask.ext.bcrypt import Bcrypt
@@ -19,8 +19,8 @@ webSockets = {}
 
 UPLOAD_FOLDER = 'Twidder/files/'
 ALLOWED_IMAGE_EXTENSIONS = set(['jpg', 'jpeg', 'png', 'gif'])
-ALLOWED_VIDEO_EXTENSIONS = set(['mpg', 'mp4', 'avi']) 
-ALLOWED_AUDIO_EXTENSIONS = set(['mp3', 'wma', 'wav'])
+ALLOWED_VIDEO_EXTENSIONS = set(['mp4', 'ogg']) 
+ALLOWED_AUDIO_EXTENSIONS = set(['mp3', 'wav', 'ogg'])
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
@@ -56,6 +56,9 @@ def createToken():
 def createSecretKey():
     return createToken()
 
+def getUTCTimestamp():
+    return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
 def getFileExtension(fileName):
     return fileName.rsplit('.', 1)[1]
 
@@ -87,14 +90,20 @@ def validLogin(email, password):
         else:
             return False    
 
-def validHMACHash(clientHash, data, token):
-    secretKey = database_helper.getSecretKeyByToken(token)
-    if secretKey is not None:
-        hmacObj = hmac.new(secretKey.encode(), '', hashlib.sha256)
-        for value in data:
-            hmacObj.update(value)
-        serverHash = hmacObj.hexdigest()
-        return clientHash == serverHash
+def validHMACHash(clientHash, data, token, timestamp):
+    now =  datetime.datetime.strptime(getUTCTimestamp(), '%Y-%m-%d %H:%M:%S')
+    timeDifference = now - datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+    if timeDifference.seconds < 5 * 60:
+        secretKey = database_helper.getSecretKeyByToken(token)
+        if secretKey is not None:
+            hmacObj = hmac.new(secretKey.encode(), '', hashlib.sha256)
+            for value in data:
+                hmacObj.update(value.encode('utf-8'))
+            hmacObj.update("&timestamp=" + timestamp)
+            serverHash = hmacObj.hexdigest()
+            return clientHash == serverHash
+        else:
+            return False
     else:
         return False
                                
@@ -232,7 +241,8 @@ def signUp():
 @app.route('/sign_out/<token>/<clientHash>', methods=['GET'])
 def signOut(token, clientHash):
     data = ['token=' + token]
-    if validHMACHash(clientHash, data, token):
+    utcTimestamp = request.headers.get('Hash-Timestamp')
+    if validHMACHash(clientHash, data, token, utcTimestamp):
         email = database_helper.getUserEmailByToken(token)
         if email is not None:
             result = database_helper.deleteSignedInUser(token)
@@ -250,8 +260,9 @@ def signOut(token, clientHash):
       
 @app.route('/change_password/<token>/<clientHash>', methods=['GET', 'POST'])
 def changePassword(token, clientHash):
+    utcTimestamp = request.headers.get('Hash-Timestamp')
     data = ['token=' + token, '&oldPassword=' + request.form['oldPassword'], '&newPassword=' + request.form['newPassword']]
-    if validHMACHash(clientHash, data, token):
+    if validHMACHash(clientHash, data, token, utcTimestamp):
         form = ChangePasswordForm(request.form)
         if form.validate():
             email = database_helper.getUserEmailByToken(token)
@@ -280,7 +291,8 @@ def getUserData(token, email, clientHash):
         email = database_helper.getUserEmailByToken(token)
     else:
         data.append('&email=' + email)    
-    if validHMACHash(clientHash, data, token):
+    utcTimestamp = request.headers.get('Hash-Timestamp')
+    if validHMACHash(clientHash, data, token, utcTimestamp):
         signedInEmail = database_helper.getUserEmailByToken(token)
         if signedInEmail is not None:
             user = database_helper.getUserByEmail(email)
@@ -296,8 +308,9 @@ def getUserData(token, email, clientHash):
 
 @app.route('/get_user_messages/<token>/<email>/<clientHash>', methods=['GET'])
 def getUserMessagesByEmail(token, email, clientHash):
-    data = ['token=' + token, '&email=' + email]
-    if validHMACHash(clientHash, data, token):
+    data = ['token=' + token, '&email=' + email]    
+    utcTimestamp = request.headers.get('Hash-Timestamp')
+    if validHMACHash(clientHash, data, token, utcTimestamp):
         signedInEmail = database_helper.getUserEmailByToken(token)
         if signedInEmail is not None:
             if emailExists(email):
@@ -323,7 +336,8 @@ def getUserMessagesByEmail(token, email, clientHash):
 @app.route('/post_message/<token>/<email>/<clientHash>', methods=['POST'])
 def postMessage(token, email, clientHash):
     data = ['token=' + token, '&email=' + email, '&message=' + request.form['message']]
-    if validHMACHash(clientHash, data, token):
+    utcTimestamp = request.headers.get('Hash-Timestamp')
+    if validHMACHash(clientHash, data, token, utcTimestamp):
         signedInEmail = database_helper.getUserEmailByToken(token)
         if signedInEmail is not None:
             if emailExists(email):
@@ -346,7 +360,8 @@ def postMessage(token, email, clientHash):
 @app.route('/post_view/<token>/<clientHash>', methods=['POST'])
 def postView(token, clientHash):
     data = ['token=' + token, '&wallEmail=' + request.form['wallEmail']]
-    if validHMACHash(clientHash, data, token):
+    utcTimestamp = request.headers.get('Hash-Timestamp')
+    if validHMACHash(clientHash, data, token, utcTimestamp):
         signedInEmail = database_helper.getUserEmailByToken(token)
         if signedInEmail is not None:
             if emailExists(request.form['wallEmail']):

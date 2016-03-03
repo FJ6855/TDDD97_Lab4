@@ -106,7 +106,7 @@
 		<textarea id="homeMessage" name="homeMessage" placeholder="Write message here" required></textarea>
 	      </div>     
 	      <div class="formRow">
-		<input type="file" id="homeFile" name="homeFile" accept=".jpg,.jpeg,.png,.gif,.mp4,.ogg,.mp3,.wma,.wav"/>  
+		<input type="file" id="homeFile" name="homeFile" accept=".jpg,.jpeg,.png,.gif,.mp4,.ogg,.mp3,.wav"/>  
 		<button id="homePostMessageSubmit" name="homePostMessageSubmit" type="submit">Post message</button>
 	      </div> 
 	    </form>

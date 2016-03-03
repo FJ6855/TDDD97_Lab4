@@ -1,8 +1,7 @@
 var webSocket;
 var postsChart;
-var postsChartTotal;
 var viewsChart;
-
+console.log(Date.now())
 var displayView = function(viewId)
 {
     var alertMessageView = document.getElementById("alertMessageView");
@@ -34,9 +33,16 @@ var hideMessage = function()
     alertMessage.innerHTML = "";
 }
 
-var createHash = function(data)
+var getUTCTimestamp = function()
+{
+    var now = new Date();
+
+    return now.getUTCFullYear() + "-" + (now.getUTCMonth() + 1) + "-" + now.getUTCDate() + " " + now.getUTCHours() + ":" + now.getUTCMinutes() + ":" + now.getUTCSeconds();
+}
+
+var createHash = function(data, timestamp)
 {    
-    var shaObj = new jsSHA("SHA-256", "TEXT");
+    var shaObj = new jsSHA("SHA-256", "TEXT", {encoding: "UTF8"});
     
     // set secret key as hash-key
     shaObj.setHMACKey(localStorage.getItem("secretKey"), "TEXT");
@@ -47,7 +53,6 @@ var createHash = function(data)
     {
 	if (data.hasOwnProperty(key))
 	{
-	    console.log(key + " : " + data[key]);
 	    if (i == 0)
 		shaObj.update(key + "=" + data[key]);
 	    else
@@ -57,10 +62,12 @@ var createHash = function(data)
 	}
     }
 
+    shaObj.update("&timestamp=" + timestamp);
+
     return shaObj.getHMAC("HEX");
 }
 
-var makeHttpRequest = function(type, url, parameters, data, hash, callbackFunction)
+var makeHttpRequest = function(type, url, parameters, data, hash, timestamp, callbackFunction)
 {
     var xhttp = new XMLHttpRequest();
 
@@ -84,14 +91,17 @@ var makeHttpRequest = function(type, url, parameters, data, hash, callbackFuncti
     };
     
     url = "http://127.0.0.1:5000/" + url;
-
+        
     if (parameters != "")
 	url += "/" + parameters;
 	
     if (hash != "")
 	url += "/" + hash;
-    
+
     xhttp.open(type, url, true);
+
+    if (timestamp != "")
+	xhttp.setRequestHeader('Hash-Timestamp', timestamp); 
 
     if (type == "POST")
     {
@@ -112,9 +122,11 @@ var makeHttpRequest = function(type, url, parameters, data, hash, callbackFuncti
 
 var signOut = function()
 {
-    var hash = createHash({'token': localStorage.getItem("userToken")});
+    var utcTimestamp = getUTCTimestamp();
 
-    makeHttpRequest("GET", "sign_out", localStorage.getItem("userToken"), "", hash, function(response) {
+    var hash = createHash({'token': localStorage.getItem("userToken")}, utcTimestamp);
+
+    makeHttpRequest("GET", "sign_out", localStorage.getItem("userToken"), "", hash, utcTimestamp, function(response) {
 	localStorage.removeItem("userToken");
 	
 	loadSignedOut();
@@ -133,7 +145,7 @@ var loginSubmit = function()
 	loginPassword: loginPassword.value,
     };
 
-    makeHttpRequest("POST", "sign_in", "", data, "", function(response) {
+    makeHttpRequest("POST", "sign_in", "", data, "", "", function(response) {
 	localStorage.setItem("userToken", response.data.token);
 	localStorage.setItem("secretKey", response.data.secretKey);
 
@@ -160,7 +172,7 @@ var signupSubmit = function()
 	    country: document.getElementById("country").value,
 	};
 
-	makeHttpRequest("POST", "sign_up", "", data, "", function(response) {
+	makeHttpRequest("POST", "sign_up", "", data, "", "", function(response) {
 	    displayMessage(response.message, "infoMessage");
 	    
 	    document.getElementById("signupForm").reset();
@@ -183,9 +195,11 @@ var changePasswordSubmit = function()
 	    newPassword: newPassword.value,
 	};
 
-	var hash = createHash({token: localStorage.getItem("userToken"), oldPassword: oldPassword.value, newPassword: newPassword.value});
+	var utcTimestamp = getUTCTimestamp();
 
-	makeHttpRequest("POST", "change_password", localStorage.getItem("userToken"), data, hash, function(response) {
+	var hash = createHash({token: localStorage.getItem("userToken"), oldPassword: oldPassword.value, newPassword: newPassword.value}, utcTimestamp);
+
+	makeHttpRequest("POST", "change_password", localStorage.getItem("userToken"), data, hash, utcTimestamp, function(response) {
 	    displayMessage(response.message, "infoMessage");
 	    
 	    document.getElementById("changePasswordForm").reset();
@@ -203,9 +217,9 @@ var homePostMessageSubmit = function()
     getEmail(function(email) {
 	postMessage(message.value, email, file, function() {	    
 	    document.getElementById("homePostMessageForm").reset();
-	});
 
-	loadMessages(email, "homeMessages")
+	    loadMessages(email, "homeMessages")
+	});
     });
 
     return false;
@@ -214,13 +228,13 @@ var homePostMessageSubmit = function()
 var browsePostMessageSubmit = function()
 {
     var message = document.getElementById("browseMessage");
-    var file = document.getElementById("homeFile");
+    var file = document.getElementById("browseFile");
     
     postMessage(message.value, localStorage.getItem("currentBrowseEmail"), file, function() {	    
 	document.getElementById("browsePostMessageForm").reset();
-    });
 
-    loadMessages(localStorage.getItem("currentBrowseEmail"), "browseMessages");
+	loadMessages(localStorage.getItem("currentBrowseEmail"), "browseMessages");
+    });
 
     return false;
 }
@@ -229,11 +243,13 @@ var postMessage = function(message, email, file, callbackFunction)
 {	
     var data = {message: message};
 
-    var hash = createHash({token: localStorage.getItem("userToken"), email: email, message: message});
+    var utcTimestamp = getUTCTimestamp();
+
+    var hash = createHash({token: localStorage.getItem("userToken"), email: email, message: message}, utcTimestamp);
   
     if (file == undefined || (file != undefined && file.files[0] == undefined))
     {	
-	makeHttpRequest("POST", "post_message", localStorage.getItem("userToken") + "/" + email, data, hash, function(response) {
+	makeHttpRequest("POST", "post_message", localStorage.getItem("userToken") + "/" + email, data, hash, utcTimestamp, function(response) {
 	    displayMessage(response.message, "infoMessage");
 
 	    callbackFunction();
@@ -245,7 +261,7 @@ var postMessage = function(message, email, file, callbackFunction)
 	{
 	    data['file'] = file.files[0];
 	    
-	    makeHttpRequest("POST", "post_message", localStorage.getItem("userToken") + "/" + email, data, hash, function(response) {
+	    makeHttpRequest("POST", "post_message", localStorage.getItem("userToken") + "/" + email, data, hash, utcTimestamp, function(response) {
 		displayMessage(response.message, "infoMessage");
 
 		callbackFunction();
@@ -286,9 +302,11 @@ var addViewToWall = function(wallEmail)
 {
     var data = {wallEmail: wallEmail};
 
-    var hash = createHash({token: localStorage.getItem("userToken"), wallEmail: wallEmail});
+    var utcTimestamp = getUTCTimestamp();
 
-    makeHttpRequest("POST", "post_view", localStorage.getItem("userToken"), data, hash, function(response) {
+    var hash = createHash({token: localStorage.getItem("userToken"), wallEmail: wallEmail}, utcTimestamp);
+
+    makeHttpRequest("POST", "post_view", localStorage.getItem("userToken"), data, hash, utcTimestamp, function(response) {
 	console.log(response.message);
     });
 }
@@ -345,10 +363,11 @@ var menuItemClick = function(menuItem)
 
 var loadProfileInformation = function(email, callbackFunction)
 {
-    console.log("load profile");
-    var hash = createHash({token: localStorage.getItem("userToken"), email: email});
+    var utcTimestamp = getUTCTimestamp();
 
-    makeHttpRequest("GET", "get_user_data", localStorage.getItem("userToken") + "/" + email, "", hash, function(response) {
+    var hash = createHash({token: localStorage.getItem("userToken"), email: email}, utcTimestamp);
+
+    makeHttpRequest("GET", "get_user_data", localStorage.getItem("userToken") + "/" + email, "", hash, utcTimestamp, function(response) {
 	var profileInformation = {
 	    name: response.data.firstName + " " + response.data.lastName,
 	    email: response.data.email,
@@ -381,9 +400,11 @@ var appendSearchProfileInformation = function(profileInformation)
 
 var loadMessages = function(email, elementId)
 {
-    var hash = createHash({token: localStorage.getItem("userToken"), email: email});
+    var utcTimestamp = getUTCTimestamp();
 
-    makeHttpRequest("GET", "get_user_messages", localStorage.getItem("userToken") + "/" + email, "", hash, function(response) {
+    var hash = createHash({token: localStorage.getItem("userToken"), email: email}, utcTimestamp);
+
+    makeHttpRequest("GET", "get_user_messages", localStorage.getItem("userToken") + "/" + email, "", hash, utcTimestamp, function(response) {
 	document.getElementById(elementId).innerHTML = "";
 	
 	for (var i = 0; i < response.data.length; ++i)
@@ -455,9 +476,11 @@ var createMessage = function(message, elementId)
 
 var getEmail = function(callbackFunction)
 {
-    var hash = createHash({token: localStorage.getItem("userToken")});
+    var utcTimestamp = getUTCTimestamp();
 
-    makeHttpRequest("GET", "get_user_data", localStorage.getItem("userToken"), "", hash, function(response) {
+    var hash = createHash({token: localStorage.getItem("userToken")}, utcTimestamp);
+
+    makeHttpRequest("GET", "get_user_data", localStorage.getItem("userToken"), "", hash, utcTimestamp, function(response) {
 	callbackFunction(response.data.email);
     });
 }
