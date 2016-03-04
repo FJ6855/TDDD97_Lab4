@@ -38,6 +38,27 @@
     {{/each}}
   </script>
 
+  <script id="profileTemplate" type="text/x-handlebars-template">
+    <div id="{{tab}}ProfileInformation" class="profileInformation {{#if hide}}hide{{/if}}"> </div>
+    <div id="{{tab}}PostMessage" class="postMessage {{#if hide}}hide{{/if}}">
+      <h1>Post message</h1>
+      <form id="{{tab}}PostMessageForm" class="postMessageForm">	
+	<div class="formRow">
+	  <textarea id="{{tab}}Message" name="{{tab}}Message" placeholder="Write message here" required></textarea>
+	      </div>     
+	<div class="formRow">
+	  <input type="file" id="{{tab}}File" name="{{tab}}File" accept=".jpg,.jpeg,.png,.gif,.mp4,.ogg,.mp3,.wma,.wav"/>  
+	  <button id="{{tab}}PostMessageSubmit" name="{{tab}}PostMessageSubmit" type="submit">Post message</button>
+	</div> 
+      </form>
+    </div>
+    <div id="{{tab}}MessageWall" class="messageWall {{#if hide}}hide{{/if}}">
+      <h1>{{wallTitle}}</h1>
+      <button id="{{tab}}RefreshButton" name="{{tab}}RefreshButton" class="refreshButton">Refresh</button>
+      <div id="{{tab}}Messages" class="messages"></div>
+    </div>
+  </script>
+
   <script type="text/view" id="welcomeView">
     <div id="welcome" class="view">
       <div id="logo"></div>
@@ -121,7 +142,7 @@
       </div>
       <div id="contentContainer">
 	<div id="homeTab" class="tab selectedTab">
-	  <div id="homeProfileInformation" class="profileInformation"> </div>
+	  <!--<div id="homeProfileInformation" class="profileInformation"> </div>
 	  <div id="homePostMessage" class="postMessage">
 	    <h1>Post message</h1>
 	    <form id="homePostMessageForm" class="postMessageForm">	
@@ -138,7 +159,7 @@
 	    <h1>My wall</h1>
 	    <button id="homeRefreshButton" name="homeRefreshButton" class="refreshButton">Refresh</button>
 	    <div id="homeMessages" class="messages"></div>
-	  </div>
+	  </div>-->
 	</div>
 	<div id="browseTab" class="tab">
 	  <div id="searchProfile">
@@ -150,7 +171,7 @@
 	      </div>    
 	    </form>
 	  </div>
-	  <div id="browseProfileInformation" class="profileInformation hideBrowseElement"></div>
+	  <!--<div id="browseProfileInformation" class="profileInformation hideBrowseElement"></div>
 	  <div id="browsePostMessage" class="postMessage hideBrowseElement">
 	    <h1>Post message</h1>
 	    <form id="browsePostMessageForm" class="postMessageForm ">	
@@ -167,7 +188,7 @@
 	    <h1>Wall</h1>
 	    <button id="browseRefreshButton" name="browseRefreshButton" class="refreshButton">Refresh</button>
 	    <div id="browseMessages" class="messages"></div>
-	  </div>
+	  </div>-->
 	</div>
 	<div id="accountTab" class="tab">
 	  <div id="changePassword">

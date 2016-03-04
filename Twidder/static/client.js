@@ -78,6 +78,9 @@ var loadSignedIn = function()
 
     setupMenuItems();
 
+    setupProfileForTab({tab: "home", wallTitle: "My wall", hide: false});
+    setupProfileForTab({tab: "browse", wallTitle: "Wall", hide: true});
+
     setupChangePasswordForm();
 
     setupPostMessageFormForTab("home");
@@ -175,11 +178,11 @@ var displayTab = function(tab)
 
 var displayBrowseElements = function()
 {
-    var browseElements = document.getElementsByClassName("hideBrowseElement");
+    var browseElements = document.getElementById("browseTab").getElementsByClassName("hide");
 
     for (var i = browseElements.length - 1; i >= 0; --i)
     {
-	browseElements[i].classList.remove("hideBrowseElement");
+	browseElements[i].classList.remove("hide");
     }
 }
 
@@ -209,6 +212,17 @@ var setupSignUpForm = function()
     validatePasswordLengthOnInput(document.getElementById("signupPassword"));
 
     validatePasswordMatchOnInput(document.getElementById("signupPassword"), document.getElementById("repeatPassword"));
+}
+
+var setupProfileForTab = function(tabData)
+{
+    var source = document.getElementById("profileTemplate").innerHTML;
+
+    var template = Handlebars.compile(source);
+
+    var html = template(tabData);
+
+    document.getElementById(tabData["tab"] + "Tab").innerHTML += html;
 }
 
 var setupPostMessageFormForTab = function(tab)
@@ -438,7 +452,7 @@ var signUp = function()
 	makeHttpRequest("POST", "sign_up", "", data, "", "", function(response) {
 	    displayMessage(response.message, "infoMessage");
 	    
-	    document.getElementById("signupForm").reset();
+	    document.getElementById("signUpForm").reset();
 	}); 
     }
 }
