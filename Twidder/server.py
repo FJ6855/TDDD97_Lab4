@@ -335,7 +335,9 @@ def getUserMessagesByEmail(token, email, clientHash):
 
 @app.route('/post_message/<token>/<email>/<clientHash>', methods=['POST'])
 def postMessage(token, email, clientHash):
-    data = ['token=' + token, '&email=' + email, '&message=' + request.form['message']]
+    data = ['token=' + token, '&email=' + email, '&message=' + request.form['message']] 
+    if len(request.files) > 0:
+        data.append('&file=' + request.files['file'].filename);
     utcTimestamp = request.headers.get('Hash-Timestamp')
     if validHMACHash(clientHash, data, token, utcTimestamp):
         signedInEmail = database_helper.getUserEmailByToken(token)

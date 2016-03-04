@@ -152,22 +152,17 @@ div.formRow
     clear: both;
 }
 
-div.content
+div.tab
 {
     display: none;
     width: 600px;
     height: 515px;
-    background-color: #fff;
+    background-color: transparent;
 }
 
-div.selectedContent
+div.selectedTab
 {
     display: block;
-}
-
-#homeView
-{
-    background-color: transparent;
 }
 
 .profileInformation
@@ -179,7 +174,7 @@ div.selectedContent
     background-color: #FFF;
 }
 
-p
+.profileInformation p
 {
     font-family: Arial;
     font-size: 12px;
@@ -270,11 +265,6 @@ div.messageContainer img, video
     max-height: 400px;
 }
 
-#browseView
-{
-    background-color: transparent;
-}
-
 #searchProfile
 {
     margin-bottom: 10px;
@@ -304,15 +294,6 @@ div.messageContainer img, video
 #submitSearchProfile
 {
     width: 80px;
-}
-
-#searchProfileInformation
-{
-    width: 230px;
-    height: 180px;
-    float: right;
-    padding: 10px;
-    background-color: #FFF;
 }
 
 .hideBrowseElement
@@ -364,11 +345,6 @@ button
 input[type="file"]
 { 
     height: auto;
-}
-
-#accountView
-{
-    background-color: transparent;
 }
 
 #changePassword

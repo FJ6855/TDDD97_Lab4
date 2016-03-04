@@ -1,7 +1,112 @@
 var webSocket;
 var postsChart;
 var viewsChart;
-console.log(Date.now())
+
+Handlebars.registerHelper("ifequal", function(leftArgument, rightArgument, options) {
+    if (leftArgument == rightArgument)
+	return options.fn(this);
+    else
+	return options.inverse(this);
+});
+
+window.onload = function()
+{
+    if (isUserSignedIn())
+	loadSignedIn();
+
+    page('/', function() {
+	if (isUserSignedIn())
+	{
+	    page.redirect("/home");
+	}
+	else
+	{
+	    loadSignedOut();
+	}
+    });
+
+    page('/home', function() {
+	if (isUserSignedIn())
+	{
+	    displayTab("home");
+	    
+	    var email = localStorage.getItem("userEmail");
+	    
+	    loadProfileInformation(email, function(profileInformation) {
+		displayProfileInformation(profileInformation, "home");
+	    });
+	    
+	    loadMessages(email, function(messages) {
+		displayMessages(messages, "home");
+	    });
+	}
+	else
+	{
+	    page.redirect("/");
+	}
+    });
+
+    page('/browse', function() {
+	if (isUserSignedIn())
+	    displayTab("browse");
+	else
+	    page.redirect("/");	    
+    });
+
+    page('/account', function() {
+	if (isUserSignedIn())
+	{
+	    displayTab("account");
+	}
+	else
+	{
+	    page.redirect("/");	    
+	}
+    });
+
+    page.start();
+}
+
+var isUserSignedIn = function()
+{
+    return localStorage.getItem("userToken") !== null;
+}
+
+var loadSignedIn = function()
+{
+    displayView("profileView");
+
+    setupMenuItems();
+
+    setupChangePasswordForm();
+
+    setupPostMessageFormForTab("home");
+    setupPostMessageFormForTab("browse");
+    
+    setupMessageOnDrop(document.getElementById("homeMessage"));
+    setupMessageOnDrop(document.getElementById("browseMessage"));
+
+    setupRefreshButton(document.getElementById("homeRefreshButton"), localStorage.getItem("userEmail"), "home");
+    setupRefreshButton(document.getElementById("browseRefreshButton"), localStorage.getItem("currentBrowseEmail"), "browse");
+
+    setupSearchProfileForm();
+
+    document.getElementById("signOut").onclick = signOut;
+
+    setupWebSocket();
+}
+
+var loadSignedOut = function()
+{    
+    displayView("welcomeView");
+
+    setupLoginForm();
+
+    setupSignUpForm();
+}
+
+/* DISPLAY FUNCTIONS */
+
 var displayView = function(viewId)
 {
     var alertMessageView = document.getElementById("alertMessageView");
@@ -32,6 +137,537 @@ var hideMessage = function()
 
     alertMessage.innerHTML = "";
 }
+
+var displayProfileInformation = function(profileInformation, tab)
+{ 
+    var source = document.getElementById("profileInformationTemplate").innerHTML;
+    
+    var template = Handlebars.compile(source);
+    
+    var html = template(profileInformation);
+    
+    document.getElementById(tab + "ProfileInformation").innerHTML = html;
+}
+
+var displayMessages = function(messages, tab)
+{
+    var source = document.getElementById("messagesTemplate").innerHTML;
+
+    var template = Handlebars.compile(source);
+
+    var html = template({messages: messages});
+
+    document.getElementById(tab + "Messages").innerHTML = html;
+
+    setupMessagesOnDrag();
+}
+
+var displayTab = function(tab)
+{    
+    setSelectedMenuItem(tab + "Button");
+    
+    var selectedTab = document.getElementsByClassName("selectedTab");
+    
+    selectedTab[0].classList.remove("selectedTab");
+    
+    document.getElementById(tab + "Tab").classList.add("selectedTab");
+}
+
+var displayBrowseElements = function()
+{
+    var browseElements = document.getElementsByClassName("hideBrowseElement");
+
+    for (var i = browseElements.length - 1; i >= 0; --i)
+    {
+	browseElements[i].classList.remove("hideBrowseElement");
+    }
+}
+
+/* SETUP FUNCTIONS */
+
+var setupLoginForm = function()
+{    
+    document.getElementById("loginForm").onsubmit = function()
+    {
+	signIn();
+
+	return false;
+    };
+    
+    clearCustomValidityOnInput(document.getElementById("loginEmail"));
+}
+
+var setupSignUpForm = function()
+{   
+    document.getElementById("signUpForm").onsubmit = function()
+    {
+	signUp();
+
+	return false;
+    };
+
+    validatePasswordLengthOnInput(document.getElementById("signupPassword"));
+
+    validatePasswordMatchOnInput(document.getElementById("signupPassword"), document.getElementById("repeatPassword"));
+}
+
+var setupPostMessageFormForTab = function(tab)
+{
+    document.getElementById(tab + "PostMessageForm").onsubmit = function()
+    {
+        var message = document.getElementById(tab + "Message").value;
+
+        var file = document.getElementById(tab + "File");
+
+	if (tab == "home")
+            var email = localStorage.getItem("userEmail");
+	else
+	    var email = localStorage.getItem("currentBrowseEmail");
+
+        var callbackFunction = function() 
+        {        
+            document.getElementById(tab + "PostMessageForm").reset();
+
+            loadMessages(email, function(messages) {
+		displayMessages(messages, tab);
+	    });
+        }
+
+        if (file.value != "")
+        {
+            postMessageAndFileToWall(message, file.files[0], email, callbackFunction);
+        }
+        else
+        {
+            postMessageToWall(message, email, callbackFunction)
+        }
+
+	return false;
+    }
+}
+
+var setupSearchProfileForm = function()
+{
+    document.getElementById("searchProfileForm").onsubmit = function()
+    {
+        var email = document.getElementById("profileEmail").value;
+
+        loadProfileInformation(email, function(profileInformation) {
+            displayProfileInformation(profileInformation, "browse");
+
+            localStorage.setItem("currentBrowseEmail", email);
+
+            displayBrowseElements();
+
+            addViewToWall(email);
+        });
+
+        loadMessages(email, function(messages) {
+            displayMessages(messages, "browse");
+        });
+
+	return false;
+    };
+}
+
+var setupRefreshButton = function(element, email, tab)
+{
+    element.onclick = function()
+    {	
+	loadMessages(email, function(messages) {
+	    displayMessages(messages, tab);
+	});
+    }
+}
+
+var setupMenuItems = function()
+{
+    var menuItems = document.getElementsByClassName("menuItem");
+
+    for (var i = 0; i < menuItems.length; ++i)
+    {
+	menuItems[i].onclick = function()
+	{
+	    menuItemClick(this);
+	}
+    }
+}
+
+var setupChangePasswordForm = function()
+{
+    document.getElementById("changePasswordForm").onsubmit = function()
+    {
+	changePassword();
+
+	return false;
+    };
+
+    validatePasswordLengthOnInput(document.getElementById("newPassword"));
+	
+    validatePasswordMatchOnInput(document.getElementById("newPassword"), document.getElementById("repeatNewPassword"));
+}
+
+var setupMessageOnDrop = function(element)
+{    
+    element.ondrop = function(event)
+    {
+	event.preventDefault();
+
+	var writer = event.dataTransfer.getData("writer");
+	var message = event.dataTransfer.getData("message");
+
+	if (writer != "" && message != "")
+	    event.target.value += 'Reply to: ' + writer + '\n' + message;
+    };
+
+    element.ondragover = function(event)
+    {
+	event.preventDefault();
+    };
+}
+
+var setupMessagesOnDrag = function()
+{
+    var containers = document.getElementsByClassName("messageContainer");
+
+    for (var i = 0; i < containers.length; ++i)
+    {
+	containers[i].ondragstart = function(event)
+	{
+	    event.dataTransfer.setData("writer", event.target.getElementsByTagName("H2")[0].innerHTML);
+	    event.dataTransfer.setData("message", event.target.getElementsByTagName("P")[0].innerHTML);
+	};
+    }
+}
+
+var setupWebSocket = function() 
+{
+    webSocket = new WebSocket("ws://127.0.0.1:5000/api");
+    
+    webSocket.onopen = function()
+    {
+	webSocket.send(localStorage.getItem("userEmail"));
+    };
+    
+    webSocket.onmessage = function(message)
+    {
+	console.log("Web socket received message");
+
+	var response = JSON.parse(message.data);
+	
+	console.log(response);
+
+	if (response.type == 'signInStatus' && response.data == 'logout')
+	{
+	    signOut();
+	}
+	else if (response.type == 'usersCounter')
+	{
+	    updateUsersCounter(response.data);
+	}
+	else if (response.type == 'viewCounter')
+	{
+	    updateViewsChart(response.data);
+	}
+	else if (response.type == 'messageCounter')
+	{
+	    updatePostsChart(response.data);
+	}
+	else if (response.type == 'messageCounterTotal')
+	{   
+	    updatePostsCounter(response.data);
+	}
+    };
+}
+
+/* SERVER CALLS */
+
+var signOut = function()
+{
+    var utcTimestamp = getUTCTimestamp();
+
+    var hash = createHash({'token': localStorage.getItem("userToken")}, utcTimestamp);
+
+    makeHttpRequest("GET", "sign_out", localStorage.getItem("userToken"), "", hash, utcTimestamp, function(response) {
+	localStorage.removeItem("userToken");
+	
+	webSocket.close();
+
+	page.redirect("/");
+    });
+}
+
+var signIn = function()
+{
+    var loginEmail = document.getElementById("loginEmail");
+    var loginPassword = document.getElementById("loginPassword");
+
+    var data = {
+	loginEmail: loginEmail.value,
+	loginPassword: loginPassword.value,
+    };
+
+    makeHttpRequest("POST", "sign_in", "", data, "", "", function(response) {
+	localStorage.setItem("userEmail", loginEmail.value);
+	localStorage.setItem("userToken", response.data.token);
+	localStorage.setItem("secretKey", response.data.secretKey);
+	
+	loadSignedIn();
+
+	page.redirect("/home");
+    }); 
+}
+
+var signUp = function()
+{
+    var signupPassword = document.getElementById("signupPassword");
+    var repeatPassword = document.getElementById("repeatPassword");
+    
+    if (validPasswordLength(signupPassword.value) && validPasswordMatch(signupPassword.value, repeatPassword.value))
+    {
+	var data = {
+	    signupEmail: document.getElementById("signupEmail").value,
+	    signupPassword: signupPassword.value,
+	    firstName: document.getElementById("firstName").value,
+	    lastName: document.getElementById("lastName").value,
+	    gender: document.getElementById("gender").value,
+	    city: document.getElementById("city").value,
+	    country: document.getElementById("country").value,
+	};
+
+	makeHttpRequest("POST", "sign_up", "", data, "", "", function(response) {
+	    displayMessage(response.message, "infoMessage");
+	    
+	    document.getElementById("signupForm").reset();
+	}); 
+    }
+}
+
+var changePassword = function()
+{
+    var oldPassword = document.getElementById("oldPassword");
+    var newPassword = document.getElementById("newPassword");
+    var repeatNewPassword = document.getElementById("repeatNewPassword");
+
+    if (validPasswordLength(newPassword.value) && validPasswordMatch(newPassword.value, repeatNewPassword.value))
+    {
+	var data = {
+	    oldPassword: oldPassword.value,
+	    newPassword: newPassword.value,
+	};
+
+	var utcTimestamp = getUTCTimestamp();
+
+	var hash = createHash({token: localStorage.getItem("userToken"), oldPassword: oldPassword.value, newPassword: newPassword.value}, utcTimestamp);
+
+	makeHttpRequest("POST", "change_password", localStorage.getItem("userToken"), data, hash, utcTimestamp, function(response) {
+	    displayMessage(response.message, "infoMessage");
+	    
+	    document.getElementById("changePasswordForm").reset();
+	}); 
+    }
+}
+
+var postMessageToWall = function(message, email, callbackFunction)
+{   
+    var data = {message: message};
+
+    postMessage(email, data, callbackFunction);
+} 
+
+var postMessageAndFileToWall = function(message, file, email, callbackFunction)
+{
+    if (validFileSize(file.size))
+    {
+        var data = {message: message, file: file};
+        
+        postMessage(email, data, callbackFunction);
+    }
+    else
+    {
+        displayMessage("File size is too big. Max size allowed: 4Mb.", "errorMessage");
+    }
+}
+
+/* Helper function for postMessageToWall and postMessageAndFileToWall */
+var postMessage = function(email, data, callbackFunction)
+{
+    //var parameters = {token: localStorage.getItem("userToken"), wallEmail: wallEmail};
+    var utcTimestamp = getUTCTimestamp();
+
+    var hashData = {token: localStorage.getItem("userToken"), email: email, message: data['message']};
+
+    if (data.hasOwnProperty("file"))
+	hashData["file"] = data["file"].name;
+
+    var hash = createHash(hashData, utcTimestamp);
+
+    makeHttpRequest("POST", "post_message", localStorage.getItem("userToken") + "/" + email, data, hash, utcTimestamp, function(response) {
+        displayMessage(response.message, "infoMessage");
+
+        callbackFunction();
+    });
+}
+
+var addViewToWall = function(wallEmail)
+{
+    var data = {wallEmail: wallEmail};
+
+    var utcTimestamp = getUTCTimestamp();
+
+    var hash = createHash({token: localStorage.getItem("userToken"), wallEmail: wallEmail}, utcTimestamp);
+
+    makeHttpRequest("POST", "post_view", localStorage.getItem("userToken"), data, hash, utcTimestamp, function(response) {
+	console.log(response.message);
+    });
+}
+
+var loadProfileInformation = function(email, callbackFunction)
+{
+    var utcTimestamp = getUTCTimestamp();
+
+    var hash = createHash({token: localStorage.getItem("userToken"), email: email}, utcTimestamp);
+
+    makeHttpRequest("GET", "get_user_data", localStorage.getItem("userToken") + "/" + email, "", hash, utcTimestamp, function(response) {
+	var profileInformation = {
+	    name: response.data.firstName + " " + response.data.lastName,
+	    email: response.data.email,
+	    gender: response.data.gender,
+	    city: response.data.city,
+		    country: response.data.country,
+	};
+
+	callbackFunction(profileInformation);
+    });
+}
+
+var loadMessages = function(email, callbackFunction)
+{
+    var utcTimestamp = getUTCTimestamp();
+
+    var hash = createHash({token: localStorage.getItem("userToken"), email: email}, utcTimestamp);
+
+    makeHttpRequest("GET", "get_user_messages", localStorage.getItem("userToken") + "/" + email, "", hash, utcTimestamp, function(response) {
+	callbackFunction(response.data);
+    });
+}
+
+/* VALIDATION FUNCTIONS */
+
+var validPasswordLength = function(password)
+{
+    return (password.length >= 6);
+}
+
+var validPasswordMatch = function(repeatPassword, password)
+{
+    return (password == repeatPassword);
+}
+
+var validFileSize = function(fileSize)
+{
+    return (fileSize / 1000000 < 4); 
+}
+
+var clearCustomValidityOnInput = function(element)
+{
+    element.oninput = function()
+    {
+	element.setCustomValidity("");
+    }
+}
+
+var validatePasswordLengthOnInput = function(element)
+{
+    element.oninput = function()
+    {
+	if (validPasswordLength(element.value)) 
+	    element.setCustomValidity("");
+	else
+	    element.setCustomValidity("Password must be at least 6 characters long.");
+    }
+}
+
+var validatePasswordMatchOnInput = function(element, elementToMatch)
+{
+    elementToMatch.oninput = function()
+    {
+	if (validPasswordMatch(element.value, elementToMatch.value))
+	    elementToMatch.setCustomValidity("");
+	else
+	    elementToMatch.setCustomValidity("Password doesn't match.");
+    }
+}
+
+/* MENU FUNCTIONS */
+
+var setSelectedMenuItem = function(menuItemId)
+{
+    var selectedMenuItem = document.getElementsByClassName("selected");
+
+    selectedMenuItem[0].classList.remove("selected");
+
+    document.getElementById(menuItemId).classList.add("selected");
+}
+
+var menuItemClick = function(menuItem)
+{
+    setSelectedMenuItem(menuItem.getAttribute("id"));
+
+    if (menuItem.getAttribute("id") == "homeButton")
+    {
+	history.pushState(null, null, "/home");
+	page.redirect("/home");
+    }
+    else if (menuItem.getAttribute("id") == "browseButton")
+    {
+	history.pushState(null, null, "/browse");    
+	page.redirect("/browse");
+    }
+    else if (menuItem.getAttribute("id") == "accountButton")
+    {
+	history.pushState(null, null, "/account");
+	page.redirect("/account");
+    }
+}
+
+/* LIVE DATA FUNCTIONS */
+
+var updateUsersCounter = function(data)
+{
+    document.getElementById("usersCounter").innerHTML = "Users online: " + data;
+}
+
+var updatePostsChart = function(data)
+{
+    var context = document.getElementById("postsChart").getContext("2d");
+    
+    if (postsChart !== undefined)
+	postsChart.destroy();
+    
+    postsChart = new Chart(context).Doughnut(data, {animationSteps: 80, animationEasing: "easeInOutQuart", legendTemplate: '<ul class=\"<%=name.toLowerCase()%>-legend\"><% for (var i=0; i<segments.length; i++){%><li><span style=\"background-color:<%=segments[i].fillColor%>\"></span><%if(segments[i].label){%><%=segments[i].label%><%}%></li><%}%></ul>'});
+    
+    var legendHTML = postsChart.generateLegend();
+    
+    document.getElementById("postsStatsLegend").innerHTML = legendHTML;
+}
+
+var updatePostsCounter = function(data)
+{
+    document.getElementById("totalPosts").innerHTML = '<span>Total</span><br/>' + data;
+}
+
+var updateViewsChart = function(data)
+{
+    var context = document.getElementById("viewsChart").getContext("2d");
+    
+    if (viewsChart !== undefined)
+	viewsChart.destroy();
+    
+    viewsChart = new Chart(context).Line(data, {});
+}
+
+/* HTTP REQUEST */
 
 var getUTCTimestamp = function()
 {
@@ -118,654 +754,4 @@ var makeHttpRequest = function(type, url, parameters, data, hash, timestamp, cal
     {
 	xhttp.send();
     }
-}
-
-var signOut = function()
-{
-    var utcTimestamp = getUTCTimestamp();
-
-    var hash = createHash({'token': localStorage.getItem("userToken")}, utcTimestamp);
-
-    makeHttpRequest("GET", "sign_out", localStorage.getItem("userToken"), "", hash, utcTimestamp, function(response) {
-	localStorage.removeItem("userToken");
-	
-	loadSignedOut();
-	    
-	webSocket.close();
-    });
-}
-
-var loginSubmit = function()
-{
-    var loginEmail = document.getElementById("loginEmail");
-    var loginPassword = document.getElementById("loginPassword");
-
-    var data = {
-	loginEmail: loginEmail.value,
-	loginPassword: loginPassword.value,
-    };
-
-    makeHttpRequest("POST", "sign_in", "", data, "", "", function(response) {
-	localStorage.setItem("userToken", response.data.token);
-	localStorage.setItem("secretKey", response.data.secretKey);
-
-	page.redirect("/home");
-    }); 
-		
-    return false;
-}
-
-var signupSubmit = function()
-{
-    var signupPassword = document.getElementById("signupPassword");
-    var repeatPassword = document.getElementById("repeatPassword");
-    
-    if (validPasswordLength(signupPassword.value) && validPasswordMatch(signupPassword.value, repeatPassword.value))
-    {
-	var data = {
-	    signupEmail: document.getElementById("signupEmail").value,
-	    signupPassword: signupPassword.value,
-	    firstName: document.getElementById("firstName").value,
-	    lastName: document.getElementById("lastName").value,
-	    gender: document.getElementById("gender").value,
-	    city: document.getElementById("city").value,
-	    country: document.getElementById("country").value,
-	};
-
-	makeHttpRequest("POST", "sign_up", "", data, "", "", function(response) {
-	    displayMessage(response.message, "infoMessage");
-	    
-	    document.getElementById("signupForm").reset();
-	}); 
-    }
-
-    return false;
-}
-
-var changePasswordSubmit = function()
-{
-    var oldPassword = document.getElementById("oldPassword");
-    var newPassword = document.getElementById("newPassword");
-    var repeatNewPassword = document.getElementById("repeatNewPassword");
-
-    if (validPasswordLength(newPassword.value) && validPasswordMatch(newPassword.value, repeatNewPassword.value))
-    {
-	var data = {
-	    oldPassword: oldPassword.value,
-	    newPassword: newPassword.value,
-	};
-
-	var utcTimestamp = getUTCTimestamp();
-
-	var hash = createHash({token: localStorage.getItem("userToken"), oldPassword: oldPassword.value, newPassword: newPassword.value}, utcTimestamp);
-
-	makeHttpRequest("POST", "change_password", localStorage.getItem("userToken"), data, hash, utcTimestamp, function(response) {
-	    displayMessage(response.message, "infoMessage");
-	    
-	    document.getElementById("changePasswordForm").reset();
-	}); 
-    }
-	    
-    return false;
-}
-
-var homePostMessageSubmit = function()
-{
-    var message = document.getElementById("homeMessage");
-    var file = document.getElementById("homeFile");
-
-    getEmail(function(email) {
-	postMessage(message.value, email, file, function() {	    
-	    document.getElementById("homePostMessageForm").reset();
-
-	    loadMessages(email, "homeMessages")
-	});
-    });
-
-    return false;
-}
-
-var browsePostMessageSubmit = function()
-{
-    var message = document.getElementById("browseMessage");
-    var file = document.getElementById("browseFile");
-    
-    postMessage(message.value, localStorage.getItem("currentBrowseEmail"), file, function() {	    
-	document.getElementById("browsePostMessageForm").reset();
-
-	loadMessages(localStorage.getItem("currentBrowseEmail"), "browseMessages");
-    });
-
-    return false;
-}
-
-var postMessage = function(message, email, file, callbackFunction)
-{	
-    var data = {message: message};
-
-    var utcTimestamp = getUTCTimestamp();
-
-    var hash = createHash({token: localStorage.getItem("userToken"), email: email, message: message}, utcTimestamp);
-  
-    if (file == undefined || (file != undefined && file.files[0] == undefined))
-    {	
-	makeHttpRequest("POST", "post_message", localStorage.getItem("userToken") + "/" + email, data, hash, utcTimestamp, function(response) {
-	    displayMessage(response.message, "infoMessage");
-
-	    callbackFunction();
-	});
-    }
-    else
-    {
-	if (file != undefined && file.files[0] != undefined && validFileSize(file.files[0].size))
-	{
-	    data['file'] = file.files[0];
-	    
-	    makeHttpRequest("POST", "post_message", localStorage.getItem("userToken") + "/" + email, data, hash, utcTimestamp, function(response) {
-		displayMessage(response.message, "infoMessage");
-
-		callbackFunction();
-	    });
-	}
-	else
-	{
-	    displayMessage("File size is too big. Max size allowed: 4Mb.", "errorMessage");
-	}
-    }    
-}   
-
-var validFileSize = function(fileSize)
-{
-    return (fileSize / 1000000 < 4); 
-}
-
-var searchProfileSubmit = function()
-{
-    var profileEmail = document.getElementById("profileEmail");
-    
-    loadProfileInformation(profileEmail.value, function(profileInformation) {
-	appendSearchProfileInformation(profileInformation);
-
-	loadMessages(profileEmail.value, "browseMessages");
-
-	localStorage.setItem("currentBrowseEmail", profileEmail.value);
-
-	showBrowseElements();
-
-	addViewToWall(profileEmail.value);
-    });
-
-    return false;
-}
-
-var addViewToWall = function(wallEmail)
-{
-    var data = {wallEmail: wallEmail};
-
-    var utcTimestamp = getUTCTimestamp();
-
-    var hash = createHash({token: localStorage.getItem("userToken"), wallEmail: wallEmail}, utcTimestamp);
-
-    makeHttpRequest("POST", "post_view", localStorage.getItem("userToken"), data, hash, utcTimestamp, function(response) {
-	console.log(response.message);
-    });
-}
-
-var showBrowseElements = function()
-{
-    var browseElements = document.getElementsByClassName("hideBrowseElement");
-
-    for (var i = browseElements.length - 1; i >= 0; --i)
-    {
-	browseElements[i].classList.remove("hideBrowseElement");
-    }
-}
-
-var validPasswordLength = function(password)
-{
-    return (password.length >= 6);
-}
-
-var validPasswordMatch = function(repeatPassword, password)
-{
-    return (password == repeatPassword);
-}
-
-var setSelectedMenuItem = function(menuItemId)
-{
-    var selectedMenuItem = document.getElementsByClassName("selected");
-
-    selectedMenuItem[0].classList.remove("selected");
-
-    document.getElementById(menuItemId).classList.add("selected");
-}
-
-var menuItemClick = function(menuItem)
-{
-    setSelectedMenuItem(menuItem.getAttribute("id"));
-
-    if (menuItem.getAttribute("id") == "homeButton")
-    {
-	history.pushState(null, null, "/home");
-	page.redirect("/home");
-    }
-    else if (menuItem.getAttribute("id") == "browseButton")
-    {
-	history.pushState(null, null, "/browse");    
-	page.redirect("/browse");
-    }
-    else if (menuItem.getAttribute("id") == "accountButton")
-    {
-	history.pushState(null, null, "/account");
-	page.redirect("/account");
-    }
-}
-
-var loadProfileInformation = function(email, callbackFunction)
-{
-    var utcTimestamp = getUTCTimestamp();
-
-    var hash = createHash({token: localStorage.getItem("userToken"), email: email}, utcTimestamp);
-
-    makeHttpRequest("GET", "get_user_data", localStorage.getItem("userToken") + "/" + email, "", hash, utcTimestamp, function(response) {
-	var profileInformation = {
-	    name: response.data.firstName + " " + response.data.lastName,
-	    email: response.data.email,
-	    gender: response.data.gender,
-	    city: response.data.city,
-		    country: response.data.country,
-	};
-
-	callbackFunction(profileInformation);
-    });
-}
-
-var appendProfileInformation = function(profileInformation)
-{    
-    document.getElementById("profileInfoName").innerHTML = "<span>Name:</span> " + profileInformation.name;
-    document.getElementById("profileInfoEmail").innerHTML = "<span>Email:</span> " + profileInformation.email;
-    document.getElementById("profileInfoGender").innerHTML = "<span>Gender:</span> " + profileInformation.gender;
-    document.getElementById("profileInfoCity").innerHTML = "<span>City:</span> " + profileInformation.city;
-    document.getElementById("profileInfoCountry").innerHTML = "<span>Country:</span> " + profileInformation.country;
-}
-
-var appendSearchProfileInformation = function(profileInformation)
-{    
-    document.getElementById("browseProfileInfoName").innerHTML = "<span>Name:</span> " + profileInformation.name;
-    document.getElementById("browseProfileInfoEmail").innerHTML = "<span>Email:</span> " + profileInformation.email;
-    document.getElementById("browseProfileInfoGender").innerHTML = "<span>Gender:</span> " + profileInformation.gender;
-    document.getElementById("browseProfileInfoCity").innerHTML = "<span>City:</span> " + profileInformation.city;
-    document.getElementById("browseProfileInfoCountry").innerHTML = "<span>Country:</span> " + profileInformation.country;
-}
-
-var loadMessages = function(email, elementId)
-{
-    var utcTimestamp = getUTCTimestamp();
-
-    var hash = createHash({token: localStorage.getItem("userToken"), email: email}, utcTimestamp);
-
-    makeHttpRequest("GET", "get_user_messages", localStorage.getItem("userToken") + "/" + email, "", hash, utcTimestamp, function(response) {
-	document.getElementById(elementId).innerHTML = "";
-	
-	for (var i = 0; i < response.data.length; ++i)
-	{
-	    var message = response.data[i];
-
-	    createMessage(message, elementId)
-	}
-    });
-}
-
-var createMessage = function(message, elementId)
-{
-    var container = document.createElement("DIV");
-
-    container.classList.add("messageContainer");
-    container.setAttribute("draggable", "true");
-
-    container.ondragstart = function(event)
-    {
-	event.dataTransfer.setData("writer", event.target.getElementsByTagName("H2")[0].innerHTML);
-	event.dataTransfer.setData("message", event.target.getElementsByTagName("P")[0].innerHTML);
-    };
-
-    var header = document.createElement("H2");
-
-    var writerTextNode = document.createTextNode(message.writer + " : " + message.datePosted);
-    
-    header.appendChild(writerTextNode);
-
-    container.appendChild(header);
-
-    var messageNode = document.createElement("P");
-
-    var messageTextNode = document.createTextNode(message.message);
-
-    messageNode.appendChild(messageTextNode);
-
-    container.appendChild(messageNode);
-
-    if (message.hasOwnProperty('fileName'))
-    {
-	var fileTag;
-
-	if (message.fileType == 'image')
-	{
-	    fileTag = document.createElement('IMG');
-	}
-	else if (message.fileType == 'video')
-	{
-	    fileTag = document.createElement('VIDEO');
-	    fileTag.setAttribute("controls", "");
-	}
-	else if (message.fileType == 'audio')
-	{	    
-	    fileTag = document.createElement('AUDIO');
-	    fileTag.setAttribute("controls", "");
-	}
-
-	var src = 'uploads/' + message.fileName;
-	
-	fileTag.setAttribute("src", src);
-
-	container.appendChild(fileTag);
-    }
-
-    document.getElementById(elementId).appendChild(container);
-}
-
-var getEmail = function(callbackFunction)
-{
-    var utcTimestamp = getUTCTimestamp();
-
-    var hash = createHash({token: localStorage.getItem("userToken")}, utcTimestamp);
-
-    makeHttpRequest("GET", "get_user_data", localStorage.getItem("userToken"), "", hash, utcTimestamp, function(response) {
-	callbackFunction(response.data.email);
-    });
-}
-
-var clearCustomValidityOnInput = function(element)
-{
-    element.oninput = function()
-    {
-	element.setCustomValidity("");
-    }
-}
-
-var validatePasswordLengthOnInput = function(element)
-{
-    element.oninput = function()
-    {
-	if (validPasswordLength(element.value)) 
-	    element.setCustomValidity("");
-	else
-	    element.setCustomValidity("Password must be at least 6 characters long.");
-    }
-}
-
-var validatePasswordMatchOnInput = function(element, elementToMatch)
-{
-    elementToMatch.oninput = function()
-    {
-	if (validPasswordMatch(element.value, elementToMatch.value))
-	    elementToMatch.setCustomValidity("");
-	else
-	    elementToMatch.setCustomValidity("Password doesn't match.");
-    }
-}
-
-var setupLoginForm = function()
-{    
-    document.getElementById("loginForm").onsubmit = loginSubmit;
-    
-    clearCustomValidityOnInput(document.getElementById("loginEmail"));
-}
-
-var setupSignUpForm = function()
-{   
-    document.getElementById("signupForm").onsubmit = signupSubmit;
-
-    validatePasswordLengthOnInput(document.getElementById("signupPassword"));
-
-    validatePasswordMatchOnInput(document.getElementById("signupPassword"), document.getElementById("repeatPassword"));
-}
-
-var setupMenuItems = function()
-{
-    var menuItems = document.getElementsByClassName("menuItem");
-
-    for (var i = 0; i < menuItems.length; ++i)
-    {
-	menuItems[i].onclick = function()
-	{
-	    menuItemClick(this);
-	}
-    }
-}
-
-var setupChangePasswordForm = function()
-{
-    document.getElementById("changePasswordForm").onsubmit = changePasswordSubmit;
-
-    validatePasswordLengthOnInput(document.getElementById("newPassword"));
-	
-    validatePasswordMatchOnInput(document.getElementById("newPassword"), document.getElementById("repeatNewPassword"));
-}
-
-var loadProfile = function(email, wallId)
-{    
-    loadProfileInformation(email, function(profileInformation) {
-	appendProfileInformation(profileInformation);
-    });
-
-    loadMessages(email, wallId);
-}
-
-var setupRefreshButton = function(element, email, wallId)
-{
-    element.onclick = function()
-    {	
-	loadMessages(email, wallId);
-    }
-}
-
-var loadSignedOut = function()
-{    
-    displayView("welcomeView");
-
-    setupLoginForm();
-
-    setupSignUpForm();
-}
-
-var addMessageOnDrop = function(element)
-{    
-    element.ondrop = function(event)
-    {
-	event.preventDefault();
-
-	var writer = event.dataTransfer.getData("writer");
-	var message = event.dataTransfer.getData("message");
-
-	if(writer != "" && message != "")
-	    event.target.value += 'Reply to: ' + writer + '\n' + message;
-    };
-
-    element.ondragover = function(event)
-    {
-	event.preventDefault();
-    };
-}
-
-var updateUsersCounter = function(data)
-{
-    document.getElementById("usersCounter").innerHTML = "Users online: " + data;
-}
-
-var updateMessageCounter = function(data)
-{
-    var context = document.getElementById("postsChart").getContext("2d");
-    
-    if (postsChart !== undefined)
-	postsChart.destroy();
-
-    postsChart = new Chart(context).Doughnut(data, {animationSteps: 80, animationEasing: "easeInOutQuart", legendTemplate: '<ul class=\"<%=name.toLowerCase()%>-legend\"><% for (var i=0; i<segments.length; i++){%><li><span style=\"background-color:<%=segments[i].fillColor%>\"></span><%if(segments[i].label){%><%=segments[i].label%><%}%></li><%}%></ul>'});
-
-    var legendHTML = postsChart.generateLegend();
-
-    document.getElementById("postsStatsLegend").innerHTML = legendHTML;
-}
-
-var updateMessageCounterTotal = function(data)
-{
-    document.getElementById("totalPosts").innerHTML = '<span>Total</span><br/>' + data;
-}
-
-var updateViewsCounter = function(data)
-{
-    var context = document.getElementById("viewsChart").getContext("2d");
-
-    if (viewsChart !== undefined)
-	viewsChart.destroy();
-
-    viewsChart = new Chart(context).Line(data, {});
-}
-
-var setupWebSocket = function() 
-{
-    webSocket = new WebSocket("ws://127.0.0.1:5000/api");
-    
-    webSocket.onopen = function()
-    {
-	getEmail(function(email) {
-	    webSocket.send(email);
-	});
-    };
-    
-    webSocket.onmessage = function(message)
-    {
-	console.log("Web socket received message");
-
-	var response = JSON.parse(message.data);
-	
-	console.log(response);
-
-	if (response.type == 'signInStatus' && response.data == 'logout')
-	{
-	    signOut();
-	}
-	else if (response.type == 'usersCounter')
-	{
-	    updateUsersCounter(response.data);
-	}
-	else if (response.type == 'viewCounter')
-	{
-	    updateViewsCounter(response.data);
-	}
-	else if (response.type == 'messageCounter')
-	{
-	    updateMessageCounter(response.data);
-	}
-	else if (response.type == 'messageCounterTotal')
-	{
-	    updateMessageCounterTotal(response.data);
-	}
-    };
-}
-
-var loadSignedIn = function()
-{
-    displayView("profileView");
-
-    getEmail(function(email) {
-	setupRefreshButton(document.getElementById("homeRefreshButton"), email, "homeMessages");
-	
-	loadProfile(email, "homeMessages");
-    });
-
-    setupMenuItems();
-
-    setupChangePasswordForm();
-
-    document.getElementById("homePostMessageForm").onsubmit = homePostMessageSubmit;
-    
-    addMessageOnDrop(document.getElementById("homeMessage"));
-    addMessageOnDrop(document.getElementById("browseMessage"));
-
-    setupRefreshButton(document.getElementById("browseRefreshButton"), localStorage.getItem("currentBrowseEmail"), "browseMessages");
-
-    document.getElementById("searchProfileForm").onsubmit = searchProfileSubmit;
-
-    document.getElementById("browsePostMessageForm").onsubmit = browsePostMessageSubmit;
-
-    document.getElementById("signOut").onclick = signOut;
-
-    setupWebSocket();
-}
-
-var isUserSignedIn = function()
-{
-    return localStorage.getItem("userToken") !== null;
-}
-
-window.onload = function()
-{
-    page('/', function() {
-	if (isUserSignedIn())
-	{
-	    page.redirect("/home");
-	}
-	else
-	{
-	    loadSignedOut();
-	}
-    });
-
-    page('/home', function() {
-	if (isUserSignedIn())
-	{
-	    loadSignedIn();
-
-	    setSelectedMenuItem("homeButton");
-
-	    document.getElementById("homeView").classList.add("selectedContent");
-	}
-	else
-	{
-	    page.redirect("/");
-	}
-    });
-
-    page('/browse', function() {
-	if (isUserSignedIn())
-	{
-	    loadSignedIn();
-
-	    setSelectedMenuItem("browseButton");
-
-	    document.getElementById("browseView").classList.add("selectedContent");
-	}
-	else
-	{
-	    page.redirect("/");
-	}
-    });
-
-    page('/account', function() {
-	if (isUserSignedIn())
-	{
-	    loadSignedIn();
-
-	    setSelectedMenuItem("accountButton");
-
-	    document.getElementById("accountView").classList.add("selectedContent");
-	}
-	else
-	{
-	    page.redirect("/");
-	}
-    });
-
-    page.start();
 }

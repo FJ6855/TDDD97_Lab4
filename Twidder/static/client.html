@@ -3,9 +3,40 @@
   <title>Twidder</title>
   <link href="/static/client.css" type="text/css" rel="stylesheet">
   <script src="/static/page.js" type="text/javascript"></script>
+  <script src="/static/handlebars.js" type="text/javascript"></script>
   <script src="/static/chart.js" type="text/javascript"></script>
   <script src="/static/sha256.js" type="text/javascript"></script>
   <script src="/static/client.js" type="text/javascript"></script>
+
+  <script id="profileInformationTemplate" type="text/x-handlebars-template">
+    <h1>Profile</h1>
+    <h2>Profile information</h2>
+    <p><span>Name:</span> {{name}}</p>
+    <p><span>Email:</span> {{email}}</p>
+    <p><span>Gender:</span> {{gender}}</p>
+    <p><span>City:</span> {{city}}</p>
+    <p><span>Country:</span> {{country}}</p>
+  </script>
+
+  <script id="messagesTemplate" type="text/x-handlebars-template">
+    {{#each messages}}
+    <div class="messageContainer" draggable="true">
+      <h2>{{writer}} : {{datePosted}}</h2>
+      <p>{{message}}</p>
+      {{#if fileName}}
+      {{#ifequal fileType "image"}}
+      <img src="uploads/{{fileName}}"></img>
+      {{/ifequal}} 
+      {{#ifequal fileType "video"}}
+      <video src="uploads/{{fileName}}" controls></video>
+      {{/ifequal}} 
+      {{#ifequal fileType "audio"}}
+      <audio src="uploads/{{fileName}}" controls></audio>
+      {{/ifequal}} 
+      {{/if}}
+    </div>
+    {{/each}}
+  </script>
 
   <script type="text/view" id="welcomeView">
     <div id="welcome" class="view">
@@ -28,7 +59,7 @@
       </div>
       <div id="signup">
 	<h1>Sign up here</h1>
-	<form id="signupForm">
+	<form id="signUpForm">
 	  <div class="formRow">
 	    <label>First Name</label>
 	    <input id="firstName" name="firstName" type="text" required></input>
@@ -89,16 +120,8 @@
 	</div>
       </div>
       <div id="contentContainer">
-	<div id="homeView" class="content">
-	  <div id="homeProfileInformation" class="profileInformation">
-	    <h1>Welcome</h1>
-	    <h2>Profile information</h2>
-	    <p id="profileInfoName"></p>
-	    <p id="profileInfoEmail"></p>
-	    <p id="profileInfoGender"></p>
-	    <p id="profileInfoCity"></p>
-	    <p id="profileInfoCountry"></p>
-	  </div>
+	<div id="homeTab" class="tab selectedTab">
+	  <div id="homeProfileInformation" class="profileInformation"> </div>
 	  <div id="homePostMessage" class="postMessage">
 	    <h1>Post message</h1>
 	    <form id="homePostMessageForm" class="postMessageForm">	
@@ -117,7 +140,7 @@
 	    <div id="homeMessages" class="messages"></div>
 	  </div>
 	</div>
-	<div id="browseView" class="content">
+	<div id="browseTab" class="tab">
 	  <div id="searchProfile">
 	    <h1>Search Profile</h1>
 	    <form id="searchProfileForm">
@@ -127,15 +150,7 @@
 	      </div>    
 	    </form>
 	  </div>
-	  <div id="browseProfileInformation" class="profileInformation hideBrowseElement">
-	    <h1>Profile</h1>
-	    <h2>Profile information</h2>
-	    <p id="browseProfileInfoName"></p>
-	    <p id="browseProfileInfoEmail"></p>
-	    <p id="browseProfileInfoGender"></p>
-	    <p id="browseProfileInfoCity"></p>
-	    <p id="browseProfileInfoCountry"></p>
-	  </div>
+	  <div id="browseProfileInformation" class="profileInformation hideBrowseElement"></div>
 	  <div id="browsePostMessage" class="postMessage hideBrowseElement">
 	    <h1>Post message</h1>
 	    <form id="browsePostMessageForm" class="postMessageForm ">	
@@ -154,7 +169,7 @@
 	    <div id="browseMessages" class="messages"></div>
 	  </div>
 	</div>
-	<div id="accountView" class="content">
+	<div id="accountTab" class="tab">
 	  <div id="changePassword">
 	    <h1>Change password</h1>
 	    <form id="changePasswordForm">
