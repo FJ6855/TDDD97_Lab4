@@ -14,70 +14,31 @@ window.onload = function()
     if (isUserSignedIn())
 	loadSignedIn();
 
-    page('/', function() {
-	if (isUserSignedIn())
-	{
-	    page.redirect("/home");
-	}
-	else
-	{
-	    loadSignedOut();
-	}
-    });
-
-    page('/home', function() {
-	if (isUserSignedIn())
-	{
-	    displayTab("home");
-	    
-	    var email = localStorage.getItem("userEmail");
-	    
-	    loadProfileInformation(email, function(profileInformation) {
-		displayProfileInformation(profileInformation, "home");
-	    });
-	    
-	    loadMessages(email, function(messages) {
-		displayMessages(messages, "home");
-	    });
-	}
-	else
-	{
-	    page.redirect("/");
-	}
-    });
-
-    page('/browse', function() {
-	if (isUserSignedIn())
-	    displayTab("browse");
-	else
-	    page.redirect("/");	    
-    });
-
-    page('/account', function() {
-	if (isUserSignedIn())
-	{
-	    displayTab("account");
-	}
-	else
-	{
-	    page.redirect("/");	    
-	}
-    });
-
-    page.start();
+    setupClientSideRouting();
 }
 
 var isUserSignedIn = function()
 {
-    return localStorage.getItem("userToken") !== null;
+    return (localStorage.getItem("userToken") !== null && localStorage.getItem("userEmail") !== null);
 }
 
+/* Function that loads the profile view and sets up all the forms, menu, event listeners, web socket etc. */
 var loadSignedIn = function()
 {
     displayView("profileView");
+  
+    var email = localStorage.getItem("userEmail");
+    
+    loadProfileInformation(email, function(profileInformation) {
+	displayProfileInformation(profileInformation, "home");
+    });
+    
+    loadMessages(email, function(messages) {
+	displayMessages(messages, "home");
+    });
 
     setupMenuItems();
-
+    
     setupProfileForTab({tab: "home", wallTitle: "My wall", hide: false});
     setupProfileForTab({tab: "browse", wallTitle: "Wall", hide: true});
 
@@ -89,8 +50,8 @@ var loadSignedIn = function()
     setupMessageOnDrop(document.getElementById("homeMessage"));
     setupMessageOnDrop(document.getElementById("browseMessage"));
 
-    setupRefreshButton(document.getElementById("homeRefreshButton"), localStorage.getItem("userEmail"), "home");
-    setupRefreshButton(document.getElementById("browseRefreshButton"), localStorage.getItem("currentBrowseEmail"), "browse");
+    setupRefreshButtonForTab(document.getElementById("homeRefreshButton"), "home");
+    setupRefreshButtonForTab(document.getElementById("browseRefreshButton"), "browse");
 
     setupSearchProfileForm();
 
@@ -174,6 +135,8 @@ var displayTab = function(tab)
     selectedTab[0].classList.remove("selectedTab");
     
     document.getElementById(tab + "Tab").classList.add("selectedTab");
+
+    document.title = "Twidder - " + tab.charAt(0).toUpperCase() + tab.slice(1);
 }
 
 var displayBrowseElements = function()
@@ -187,6 +150,39 @@ var displayBrowseElements = function()
 }
 
 /* SETUP FUNCTIONS */
+
+var setupClientSideRouting = function()
+{
+    page("/", function() {
+	if (isUserSignedIn())
+	    page.redirect("/home");
+	else
+	    loadSignedOut();
+    });
+
+    page("/home", function() {
+	if (isUserSignedIn())
+	    displayTab("home");
+	else
+	    page.redirect("/");
+    });
+
+    page("/browse", function() {
+	if (isUserSignedIn())
+	    displayTab("browse");
+	else
+	    page.redirect("/");	    
+    });
+
+    page("/account", function() {
+	if (isUserSignedIn())
+	    displayTab("account");
+	else
+	    page.redirect("/");	    
+    });
+
+    page.start();
+}
 
 var setupLoginForm = function()
 {    
@@ -284,10 +280,17 @@ var setupSearchProfileForm = function()
     };
 }
 
-var setupRefreshButton = function(element, email, tab)
+var setupRefreshButtonForTab = function(element, tab)
 {
     element.onclick = function()
     {	
+	var email = "";
+
+	if (tab == "home")
+	    email = localStorage.getItem("userEmail");
+	else if (tab == "browse")
+	    email = localStorage.getItem("currentBrowseEmail");
+
 	loadMessages(email, function(messages) {
 	    displayMessages(messages, tab);
 	});
@@ -394,16 +397,18 @@ var setupWebSocket = function()
     };
 }
 
-/* SERVER CALLS */
+/* FUNCTIONS FOR SERVER CALLS */
 
 var signOut = function()
 {
     var utcTimestamp = getUTCTimestamp();
 
-    var hash = createHash({'token': localStorage.getItem("userToken")}, utcTimestamp);
+    var hash = createHash({'email': localStorage.getItem("userEmail")}, utcTimestamp);
 
-    makeHttpRequest("GET", "sign_out", localStorage.getItem("userToken"), "", hash, utcTimestamp, function(response) {
+    makeHttpRequest("GET", "sign_out", localStorage.getItem("userEmail"), "", hash, utcTimestamp, function(response) {	
 	localStorage.removeItem("userToken");
+	localStorage.removeItem("userEmail");
+	localStorage.removeItem("currentBrowseEmail");
 	
 	webSocket.close();
 
@@ -424,7 +429,6 @@ var signIn = function()
     makeHttpRequest("POST", "sign_in", "", data, "", "", function(response) {
 	localStorage.setItem("userEmail", loginEmail.value);
 	localStorage.setItem("userToken", response.data.token);
-	localStorage.setItem("secretKey", response.data.secretKey);
 	
 	loadSignedIn();
 
@@ -472,9 +476,9 @@ var changePassword = function()
 
 	var utcTimestamp = getUTCTimestamp();
 
-	var hash = createHash({token: localStorage.getItem("userToken"), oldPassword: oldPassword.value, newPassword: newPassword.value}, utcTimestamp);
+	var hash = createHash({email: localStorage.getItem("userEmail"), oldPassword: oldPassword.value, newPassword: newPassword.value}, utcTimestamp);
 
-	makeHttpRequest("POST", "change_password", localStorage.getItem("userToken"), data, hash, utcTimestamp, function(response) {
+	makeHttpRequest("POST", "change_password", localStorage.getItem("userEmail"), data, hash, utcTimestamp, function(response) {
 	    displayMessage(response.message, "infoMessage");
 	    
 	    document.getElementById("changePasswordForm").reset();
@@ -484,7 +488,7 @@ var changePassword = function()
 
 var postMessageToWall = function(message, email, callbackFunction)
 {   
-    var data = {message: message};
+    var data = {message: message, wallEmail: email};
 
     postMessage(email, data, callbackFunction);
 } 
@@ -493,7 +497,7 @@ var postMessageAndFileToWall = function(message, file, email, callbackFunction)
 {
     if (validFileSize(file.size))
     {
-        var data = {message: message, file: file};
+        var data = {message: message, wallEmail: email, file: file};
         
         postMessage(email, data, callbackFunction);
     }
@@ -504,19 +508,19 @@ var postMessageAndFileToWall = function(message, file, email, callbackFunction)
 }
 
 /* Helper function for postMessageToWall and postMessageAndFileToWall */
-var postMessage = function(email, data, callbackFunction)
+var postMessage = function(wallEmail, data, callbackFunction)
 {
-    //var parameters = {token: localStorage.getItem("userToken"), wallEmail: wallEmail};
     var utcTimestamp = getUTCTimestamp();
-
-    var hashData = {token: localStorage.getItem("userToken"), email: email, message: data['message']};
+    
+    // Remove new lines in the message, otherwise the hash won't work
+    var hashData = {email: localStorage.getItem("userEmail"), message: data["message"].replace(/\r?\n|\r/g, ""), wallEmail: data["wallEmail"]};
 
     if (data.hasOwnProperty("file"))
 	hashData["file"] = data["file"].name;
 
     var hash = createHash(hashData, utcTimestamp);
 
-    makeHttpRequest("POST", "post_message", localStorage.getItem("userToken") + "/" + email, data, hash, utcTimestamp, function(response) {
+    makeHttpRequest("POST", "post_message", localStorage.getItem("userEmail"), data, hash, utcTimestamp, function(response) {
         displayMessage(response.message, "infoMessage");
 
         callbackFunction();
@@ -529,20 +533,20 @@ var addViewToWall = function(wallEmail)
 
     var utcTimestamp = getUTCTimestamp();
 
-    var hash = createHash({token: localStorage.getItem("userToken"), wallEmail: wallEmail}, utcTimestamp);
+    var hash = createHash({email: localStorage.getItem("userEmail"), wallEmail: wallEmail}, utcTimestamp);
 
-    makeHttpRequest("POST", "post_view", localStorage.getItem("userToken"), data, hash, utcTimestamp, function(response) {
+    makeHttpRequest("POST", "post_view", localStorage.getItem("userEmail"), data, hash, utcTimestamp, function(response) {
 	console.log(response.message);
     });
 }
 
-var loadProfileInformation = function(email, callbackFunction)
+var loadProfileInformation = function(profileEmail, callbackFunction)
 {
     var utcTimestamp = getUTCTimestamp();
 
-    var hash = createHash({token: localStorage.getItem("userToken"), email: email}, utcTimestamp);
+    var hash = createHash({email: localStorage.getItem("userEmail"), profileEmail: profileEmail}, utcTimestamp);
 
-    makeHttpRequest("GET", "get_user_data", localStorage.getItem("userToken") + "/" + email, "", hash, utcTimestamp, function(response) {
+    makeHttpRequest("GET", "get_user_data", localStorage.getItem("userEmail") + "/" + profileEmail, "", hash, utcTimestamp, function(response) {
 	var profileInformation = {
 	    name: response.data.firstName + " " + response.data.lastName,
 	    email: response.data.email,
@@ -555,13 +559,13 @@ var loadProfileInformation = function(email, callbackFunction)
     });
 }
 
-var loadMessages = function(email, callbackFunction)
+var loadMessages = function(profileEmail, callbackFunction)
 {
     var utcTimestamp = getUTCTimestamp();
 
-    var hash = createHash({token: localStorage.getItem("userToken"), email: email}, utcTimestamp);
+    var hash = createHash({email: localStorage.getItem("userEmail"), profileEmail: profileEmail}, utcTimestamp);
 
-    makeHttpRequest("GET", "get_user_messages", localStorage.getItem("userToken") + "/" + email, "", hash, utcTimestamp, function(response) {
+    makeHttpRequest("GET", "get_user_messages", localStorage.getItem("userEmail") + "/" + profileEmail, "", hash, utcTimestamp, function(response) {
 	callbackFunction(response.data);
     });
 }
@@ -694,11 +698,12 @@ var createHash = function(data, timestamp)
 {    
     var shaObj = new jsSHA("SHA-256", "TEXT", {encoding: "UTF8"});
     
-    // set secret key as hash-key
-    shaObj.setHMACKey(localStorage.getItem("secretKey"), "TEXT");
+    // Set user token as hash-key
+    shaObj.setHMACKey(localStorage.getItem("userToken"), "TEXT");
         
     var i = 0;
 
+    // Add all the properties of the data object to the hash and seperates them like so: key=value&key=value&key=value..
     for (var key in data)
     {
 	if (data.hasOwnProperty(key))
@@ -711,7 +716,8 @@ var createHash = function(data, timestamp)
 	    ++i;
 	}
     }
-
+    
+    // Always add the timestamp to the end
     shaObj.update("&timestamp=" + timestamp);
 
     return shaObj.getHMAC("HEX");
@@ -734,7 +740,7 @@ var makeHttpRequest = function(type, url, parameters, data, hash, timestamp, cal
 		callbackFunction(response);
 	    }
 	    else
-	    {		
+	    {	
 		displayMessage(response.message, "errorMessage");
 	    }
 	}
@@ -744,19 +750,21 @@ var makeHttpRequest = function(type, url, parameters, data, hash, timestamp, cal
         
     if (parameters != "")
 	url += "/" + parameters;
-	
-    if (hash != "")
-	url += "/" + hash;
 
     xhttp.open(type, url, true);
 
+    // If timestamp and hash are provided then we add them to custom headers to not clutter the url
     if (timestamp != "")
 	xhttp.setRequestHeader('Hash-Timestamp', timestamp); 
+	
+    if (hash != "")
+	xhttp.setRequestHeader('Hash-Hmac', hash);
 
     if (type == "POST")
     {
 	var formData = new FormData();
 	
+	// Convert the data provided to form data to easier send it in the post 
 	for (var key in data)
 	{
 	    formData.append(key, data[key]);

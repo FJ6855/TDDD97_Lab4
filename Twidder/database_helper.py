@@ -58,6 +58,13 @@ def getUserEmailByToken(token):
     else:
         return None
 
+def getUserTokenByEmail(email):
+    token = executeSelect('select token from signedInUsers where email = ?', (email,), True)
+    if token is not None:
+        return token[0]
+    else:
+        return None
+
 def getUserMessagesByEmail(email):
     return executeSelect('select * from messages where wallEmail = ? order by datePosted desc', (email,))
 
@@ -91,15 +98,11 @@ def getViewsOnWallDuringLast6Months(wall):
     views = executeSelect('select strftime(\'%Y\', viewDate) as viewYear, strftime(\'%m\', viewDate) as viewMonth, COUNT(*) from views where wallEmail = ? and viewDate between datetime(\'now\', \'-6 months\') and datetime(\'now\', \'localtime\') group by viewMonth order by viewYear asc, viewMonth asc', (wall,))
     return views
 
-def getSecretKeyByToken(token):
-    secretKey = executeSelect('select secretKey from signedInUsers where token = ?', (token,), True)
-    return secretKey[0]
-
 def insertUser(email, firstName, lastName, gender, city, country, passwordHash):
     return executeChange('insert into users values (?, ?, ?, ?, ?, ?, ?)', (email, passwordHash, firstName, lastName, gender, city, country))
 
-def insertSignedInUser(token, secretKey, email):
-    return executeChange('insert into signedInUsers values (?, ?, ?)', (token, secretKey, email))
+def insertSignedInUser(token, email):
+    return executeChange('insert into signedInUsers values (?, ?)', (token, email))
 
 def insertMessage(writerEmail, email, message):
     return executeChangeAndGetId('insert into messages (message, wallEmail, writer) values (?, ?, ?)', (message, email, writerEmail))
@@ -113,8 +116,8 @@ def insertView(wallEmail, email):
 def deleteSignedInUser(token):
     return executeChange('delete from signedInUsers where token = ?', (token,))
 
-def deleteSignedInUserByEmail(email):
-    return executeChange('delete from signedInUsers where email = ?', (email,))
+def deleteSignedInUsersWithSameEmail(email, token):
+    return executeChange('delete from signedInUsers where email = ? and token != ?', (email, token))
 
 def updateUserPassword(email, passwordHash):
     return executeChange('update users set password = ? where email = ?', (passwordHash, email))
