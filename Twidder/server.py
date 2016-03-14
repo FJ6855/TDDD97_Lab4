@@ -47,6 +47,7 @@ def teardownRequest(exception):
     database_helper.closeDatabaseConnection()
 
 def createToken():
+    """Returns a token containing 36 characters."""
     letters = 'abcdefghiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890'
     token = ''
     for i in range(0, 36):
@@ -54,6 +55,7 @@ def createToken():
     return token
 
 def createFileName(fileExtension):
+    """Returns a file name containing 10 characters."""
     letters = 'abcdefghiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890'
     fileName = ''
     for i in range(0, 10):
@@ -62,12 +64,15 @@ def createFileName(fileExtension):
     return fileName
 
 def getUTCTimestamp():
+    """Returns a utc timestamp in format YYYY-MM-DD HH:MM:SS."""
     return datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
 def getFileExtension(fileName):
+    """Returns the file extension part of a file name"""
     return fileName.rsplit('.', 1)[1]
 
 def getFileType(fileExtension):
+    """Returns the type of file depending on the file extension."""
     if fileExtension in ALLOWED_IMAGE_EXTENSIONS:
         return 'image'
     elif fileExtension in ALLOWED_VIDEO_EXTENSIONS:
@@ -78,6 +83,7 @@ def getFileType(fileExtension):
         return ''
 
 def validLogin(email, password):
+    """Returns true if the password matches the password hash stored in the database for a user."""
     passwordHash = database_helper.getUserPasswordByEmail(email)
     if passwordHash is None:
         return False
@@ -88,13 +94,14 @@ def validLogin(email, password):
             return False    
 
 def validHMACHash(clientHash, data, email, timestamp):
+    """Returns true if the client hash matches the hash created from the data and timestamp."""
     if clientHash is not None and timestamp is not None:
         now = datetime.datetime.strptime(getUTCTimestamp(), '%Y-%m-%d %H:%M:%S')
-        # check the time difference between now and the timestamp from the client
-        # if it exceeds five minutes then it is invalid
+        # Check the time difference between now and the timestamp from the client.
+        # If it exceeds five minutes then it is invalid.
         timeDifference = now - datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
         if timeDifference.seconds < 5 * 60:
-            # get the secret key from the database stored for the current user session
+            # Get the token from the database stored for the current user session and use it as key in hash.
             token = database_helper.getUserTokenByEmail(email)
             if token is not None:
                 hmacObj = hmac.new(token.encode(), '', hashlib.sha256)
@@ -106,6 +113,7 @@ def validHMACHash(clientHash, data, email, timestamp):
     return False
                                
 def emailExists(email):
+    """Returns true if a user exists with a matching email in the database."""
     user = database_helper.getUserByEmail(email)
     if user is None:
         return False
@@ -113,12 +121,14 @@ def emailExists(email):
         return True
 
 def sendUsersCounter():
+    """Send the number of signed in users to all web sockets."""
     database_helper.connectToDatabase()
     usersCounter = database_helper.getNumberOfSignedInUsers();
     for key in webSockets:
         webSockets[key].send(json.dumps({'type': 'usersCounter', 'data': usersCounter}))
 
 def sendUserPostData(email):
+    """Send data for posts chart for the specified user's email."""
     database_helper.connectToDatabase()
     numberOfPostsByUser = database_helper.getNumberOfPostsByUserOnWall(email, email)
     data = [{'value': numberOfPostsByUser, 'color': '#9DE0AD', 'label': email}]
@@ -126,7 +136,7 @@ def sendUserPostData(email):
     numberOfPostsOnWall = database_helper.getNumberOfPostsOnWall(email)
     colors = ['#45ADA8', '#4F7A79']
     colorIndex = 0
-    # loop through the two top posters on the user's wall and assign them a color form the colors list
+    # Loop through the two top posters on the user's wall and assign them a color form the colors list.
     for writer in topTwo:
         data.append({'value': writer[1], 'color': colors[colorIndex], 'label': writer[0]})
         colorIndex += 1
@@ -134,18 +144,20 @@ def sendUserPostData(email):
         webSockets[email].send(json.dumps({'type': 'messageCounter', 'data': data}))
 
 def sendUserPostTotalData(email):
+    """Send number of total posts for the specified user's email."""
     database_helper.connectToDatabase()
     numberOfPostsOnWall = database_helper.getNumberOfPostsOnWall(email)
     if webSockets.has_key(email):
         webSockets[email].send(json.dumps({'type': 'messageCounterTotal', 'data': numberOfPostsOnWall}))
 
 def sendUserViewData(email):
+    """Send data for views chart for the specified user's email."""
     database_helper.connectToDatabase()
     views = database_helper.getViewsOnWallDuringLast6Months(email)
     posts = database_helper.getPostsOnWallDuringLast6Months(email)
     data = {'labels': ['', '', '', '', '', ''], 'datasets': []}
-    # setup the labels for the months, starts with todays month and adds the last 6 months in reverse order 
-    # so the current month is at the end of the array
+    # Setup the labels for the months, starts with todays month and adds the last 6 months in reverse order. 
+    # The current month is at the end of the array.
     today = datetime.date.today()
     for i in range(0, 6):
         data['labels'][5 - i] = getMonthName(today.strftime('%m'))
@@ -154,7 +166,7 @@ def sendUserViewData(email):
         if newMonth == 0:
             newMonth = 12
         today = today.replace(month=newMonth)
-    # setup up the data in the form that chart.js expects it in
+    # Setup up the data in the form that chart.js expects it in.
     data['datasets'].append({'label': 'Number of views', 'data': [0, 0, 0, 0, 0, 0]})
     data['datasets'].append({'label': 'Number of posts', 'data': [0, 0, 0, 0, 0, 0]})
     data['datasets'][0]['fillColor'] = 'rgba(200,200,200,0.2)'
@@ -172,8 +184,8 @@ def sendUserViewData(email):
     if webSockets.has_key(email):
         webSockets[email].send(json.dumps({'type': 'viewCounter', 'data': data}))
 
-# Function to convert month number to name
 def getMonthName(month):
+    """Returns the month name depening on the month number."""
     if month == "01":
         return "January"
     elif month == "02":
@@ -202,6 +214,7 @@ def getMonthName(month):
         return "Invalid month number"
         
 def uploadFile(file, messageId):
+    """Upload the given file and save it in the database."""
     if file and validFileType(file.filename):
         fileExtension = getFileExtension(file.filename)
         fileName = createFileName(fileExtension)
@@ -209,6 +222,7 @@ def uploadFile(file, messageId):
         database_helper.insertFile(fileName, messageId)
 
 def validFileType(fileName):
+    """Returns true if the file has valid fileExtension."""
     if '.' in fileName:
         fileExtension = getFileExtension(fileName)
         return fileExtension in ALLOWED_IMAGE_EXTENSIONS or fileExtension in ALLOWED_VIDEO_EXTENSIONS or fileExtension in ALLOWED_AUDIO_EXTENSIONS
@@ -224,11 +238,12 @@ def index():
 
 @app.route('/sign_in', methods=['POST'])
 def signIn():
+    """Signs in a user and returns a token to be used for hashing."""
     if validLogin(request.form['loginEmail'], request.form['loginPassword']):
         token = createToken()
         result = database_helper.insertSignedInUser(token, request.form['loginEmail']);
         if result == True:
-            # check if the user is signed in somewhere else (i.e socket is open) and if so force a logout
+            # Check if the user is signed in somewhere else (i.e socket is open) and if so force a logout.
             global webSockets
             if webSockets.has_key(request.form['loginEmail']):
                 webSockets[request.form['loginEmail']].send(json.dumps({'type': 'signInStatus', 'data': 'logout'}));
@@ -240,9 +255,11 @@ def signIn():
 
 @app.route('/sign_up', methods=['POST'])
 def signUp():
+    """Signs up a user."""
     form = SignUpForm(request.form)
     if form.validate():
         if emailExists(request.form['signupEmail']) == False:
+            # Hash the password with bcrypt before storing it in the database.
             passwordHash = bcrypt.generate_password_hash(request.form['signupPassword'])
             result = database_helper.insertUser(request.form['signupEmail'], request.form['firstName'], request.form['lastName'], request.form['gender'], request.form['city'], request.form['country'], passwordHash)
             if result == True:            
@@ -256,6 +273,7 @@ def signUp():
 
 @app.route('/sign_out/<email>', methods=['GET'])
 def signOut(email):
+    """Signs out a user."""
     data = ['email=' + email]
     clientHash = request.headers.get('Hash-Hmac')
     utcTimestamp = request.headers.get('Hash-Timestamp')
@@ -278,6 +296,7 @@ def signOut(email):
       
 @app.route('/change_password/<email>', methods=['GET', 'POST'])
 def changePassword(email):
+    """Changes password for a user."""
     clientHash = request.headers.get('Hash-Hmac')
     utcTimestamp = request.headers.get('Hash-Timestamp')
     data = ['email=' + email, '&oldPassword=' + request.form['oldPassword'], '&newPassword=' + request.form['newPassword']]
@@ -301,6 +320,7 @@ def changePassword(email):
 @app.route('/get_user_data/<email>', defaults={'profileEmail': None}, methods=['GET'])
 @app.route('/get_user_data/<email>/<profileEmail>', methods=['GET'])
 def getUserData(email, profileEmail):
+    """Returns the profile information about a user."""
     data = ['email=' + email]
     if profileEmail is not None:
         data.append('&profileEmail=' + profileEmail)
@@ -319,6 +339,7 @@ def getUserData(email, profileEmail):
 @app.route('/get_user_messages/<email>', defaults={'profileEmail': None}, methods=['GET'])
 @app.route('/get_user_messages/<email>/<profileEmail>', methods=['GET'])
 def getUserMessagesByEmail(email, profileEmail):
+    """Returns the messages for a user's wall."""
     data = ['email=' + email] 
     if profileEmail is None:
         profileEmail = email
@@ -346,7 +367,8 @@ def getUserMessagesByEmail(email, profileEmail):
 
 @app.route('/post_message/<email>', methods=['POST'])
 def postMessage(email):
-    # Remove new lines in the message, otherwise the hash won't work
+    """Posts a message (and file if supplied) to a user's wall."""
+    # Remove new lines in the message, otherwise the hash won't work.
     data = ['email=' + email, '&message=' + request.form['message'].replace("\r\n", ""), '&wallEmail=' + request.form['wallEmail']] 
     if len(request.files) > 0:
         data.append('&file=' + request.files['file'].filename);
@@ -371,6 +393,7 @@ def postMessage(email):
             
 @app.route('/post_view/<email>', methods=['POST'])
 def postView(email):
+    """Adds a view to a user's wall."""
     data = ['email=' + email, '&wallEmail=' + request.form['wallEmail']]
     clientHash = request.headers.get('Hash-Hmac')
     utcTimestamp = request.headers.get('Hash-Timestamp')
@@ -386,11 +409,13 @@ def postView(email):
 
 @app.route('/uploads/<fileName>')
 def uploadedFile(fileName):
+    """Returns a file from the upload folder."""
     path = os.path.abspath(app.config['UPLOAD_FOLDER'])
     return send_from_directory(path, fileName)
 
 @app.route('/api')
 def api():
+    """Handles web socket connections."""
     if request.environ.get('wsgi.websocket'):
         ws = request.environ['wsgi.websocket']
         email = ws.receive()
@@ -400,12 +425,12 @@ def api():
         sendUserPostData(email)
         sendUserPostTotalData(email)
         sendUserViewData(email)
-        #infinite loop to keep the socket open
+        # Infinite loop to keep the socket open.
         try:
             while True:
                 message = ws.receive()
         except WebSocketError:
-            # if there is an error the user or browser has closed the socket so we remove it
+            # If there is an error the user or browser has closed the socket so we remove it.
             if webSockets.has_key(email):
                 del webSockets[email]
             #print "Web socket error"
