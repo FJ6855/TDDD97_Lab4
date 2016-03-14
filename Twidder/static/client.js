@@ -756,6 +756,7 @@ var loadMessages = function(profileEmail, callbackFunction)
  * called when a user submits the sign up or changes password form
  * 
  * @param {String} password
+ * @return {Boolean}
  */
 var validPasswordLength = function(password)
 {
@@ -768,6 +769,7 @@ var validPasswordLength = function(password)
  * 
  * @param {String} repeatPassword
  * @param {String} password
+ * @return {Boolean}
  */
 var validPasswordMatch = function(repeatPassword, password)
 {
@@ -779,6 +781,7 @@ var validPasswordMatch = function(repeatPassword, password)
  * called when a user tries to post a message and file to a wall
  * 
  * @param {String} fileSize
+ * @return {Boolean}
  */
 var validFileSize = function(fileSize)
 {
@@ -935,6 +938,8 @@ var updateViewsChart = function(data)
 /**
  * getUTCTimestamp() returns a utc timestamp string in the format YYYY-MM-DD HH:MM:SS
  * called when creating a hash for a http request
+ * 
+ * @return {String}
  */
 var getUTCTimestamp = function()
 {
@@ -950,6 +955,7 @@ var getUTCTimestamp = function()
  * 
  * @param {Object} data
  * @param {String} timestamp
+ * @return {String}
  */
 var createHash = function(data, timestamp)
 {    
