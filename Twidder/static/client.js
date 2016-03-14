@@ -1,7 +1,14 @@
+// web socket object
 var webSocket;
+
+// chart object for posts data
 var postsChart;
+// chart object for views data
 var viewsChart;
 
+/**
+ * ifequal() is a function for Handlebars that checks if the two arguments are equal or not
+ */
 Handlebars.registerHelper("ifequal", function(leftArgument, rightArgument, options) {
     if (leftArgument == rightArgument)
 	return options.fn(this);
@@ -17,12 +24,20 @@ window.onload = function()
     setupClientSideRouting();
 }
 
+/**
+ * isUserSignedIn() checks if the user's token and email is stored or not in local storage
+ * called whenever the user's state need to be checked
+ *
+ * @return {Boolean} 
+ */
 var isUserSignedIn = function()
 {
     return (localStorage.getItem("userToken") !== null && localStorage.getItem("userEmail") !== null);
 }
 
-/* Function that loads the profile view and sets up all the forms, menu, event listeners, web socket etc. */
+/**
+ * loadSignedIn() loads the profile view and sets up all the forms, menu, event listeners, web socket etc. for this view 
+ */
 var loadSignedIn = function()
 {
     displayView("profileView");
@@ -60,6 +75,9 @@ var loadSignedIn = function()
     setupWebSocket();
 }
 
+/**
+ * loadSignedOut() loads the welcome view and sets up the forms for this view 
+ */
 var loadSignedOut = function()
 {    
     displayView("welcomeView");
@@ -71,6 +89,13 @@ var loadSignedOut = function()
 
 /* DISPLAY FUNCTIONS */
 
+/**
+ * displayView() displays the view with matching view id
+ * adds the messageViewContainer to the body aswell, so displayMessage and hideMessage can be used
+ * called when views need to be swapped (like signing in or out)
+ * 
+ * @param {String} viewId
+ */
 var displayView = function(viewId)
 {
     var alertMessageView = document.getElementById("alertMessageView");
@@ -82,6 +107,14 @@ var displayView = function(viewId)
     document.getElementsByTagName("body")[0].innerHTML += view.innerHTML;
 }
 
+/**
+ * displayMessage() displays a message at the top of the page and hidden autmoatically after 3 seconds
+ * the type is used as a class for the element so the style changes if it's an error message or an info message
+ * called whenever a message needs to be communicated to the user
+ * 
+ * @param {String} message
+ * @param {String} type
+ */
 var displayMessage = function(message, type)
 {
     setTimeout(hideMessage, 3000);
@@ -93,6 +126,10 @@ var displayMessage = function(message, type)
     alertMessage.innerHTML = message;
 }
 
+/**
+ * hideMessage() hides the message displayed with displayMessage() function
+ * called by a setTimeout function set in displayMessage()
+ */
 var hideMessage = function()
 {
     var alertMessage = document.getElementById("alertMessage");
@@ -102,6 +139,13 @@ var hideMessage = function()
     alertMessage.innerHTML = "";
 }
 
+/**
+ * displayProfileInformation() shows the profileInformation for a user in the specified tab
+ * called when a user signs in or when a user search for another user's wall in browse tab
+ * 
+ * @param {Object} profileInformation
+ * @param {String} tab
+ */
 var displayProfileInformation = function(profileInformation, tab)
 { 
     var source = document.getElementById("profileInformationTemplate").innerHTML;
@@ -113,6 +157,13 @@ var displayProfileInformation = function(profileInformation, tab)
     document.getElementById(tab + "ProfileInformation").innerHTML = html;
 }
 
+/**
+ * displayMessages() shows the messages for a wall in the specified tab
+ * called when a user signs in, when a user search for another user's wall in browse tab or refreshes a wall
+ * 
+ * @param {Array} messages
+ * @param {String} tab
+ */
 var displayMessages = function(messages, tab)
 {
     var source = document.getElementById("messagesTemplate").innerHTML;
@@ -126,6 +177,12 @@ var displayMessages = function(messages, tab)
     setupMessagesOnDrag();
 }
 
+/**
+ * displayTab() displays the matching tab
+ * called when a user switches between tabs using the menu (i.e when client side routing is performed)
+ * 
+ * @param {String} tab
+ */
 var displayTab = function(tab)
 {    
     setSelectedMenuItem(tab + "Button");
@@ -139,6 +196,10 @@ var displayTab = function(tab)
     document.title = "Twidder - " + tab.charAt(0).toUpperCase() + tab.slice(1);
 }
 
+/**
+ * displayBrowseElements() displays the elements with class "hide" in the browse tab
+ * called when a user searches for another user in the browse tab and finds a match
+ */
 var displayBrowseElements = function()
 {
     var browseElements = document.getElementById("browseTab").getElementsByClassName("hide");
@@ -151,6 +212,10 @@ var displayBrowseElements = function()
 
 /* SETUP FUNCTIONS */
 
+/**
+ * setupClientSideRouting() sets up client-side routing
+ * called at the loading of the page, should only be called once
+ */
 var setupClientSideRouting = function()
 {
     page("/", function() {
@@ -184,6 +249,10 @@ var setupClientSideRouting = function()
     page.start();
 }
 
+/**
+ * setupClientSideRouting() sets up the login form
+ * called when setting up the "welcome" view, should only be called once
+ */
 var setupLoginForm = function()
 {    
     document.getElementById("loginForm").onsubmit = function()
@@ -196,6 +265,10 @@ var setupLoginForm = function()
     clearCustomValidityOnInput(document.getElementById("loginEmail"));
 }
 
+/**
+ * setupSignUpForm() sets up the sing up form
+ * called when setting up the "welcome" view, should only be called once
+ */
 var setupSignUpForm = function()
 {   
     document.getElementById("signUpForm").onsubmit = function()
@@ -210,6 +283,12 @@ var setupSignUpForm = function()
     validatePasswordMatchOnInput(document.getElementById("signupPassword"), document.getElementById("repeatPassword"));
 }
 
+/**
+ * setupProfileForTab() sets up the profile layout for a tab using a template
+ * called when setting up the "profile" view, should only be called once
+ * 
+ * @param {Object} tabData
+ */
 var setupProfileForTab = function(tabData)
 {
     var source = document.getElementById("profileTemplate").innerHTML;
@@ -221,6 +300,12 @@ var setupProfileForTab = function(tabData)
     document.getElementById(tabData["tab"] + "Tab").innerHTML += html;
 }
 
+/**
+ * setupPostMessageFormForTab() sets up the form for posting a message for the specified
+ * called when setting up the "profile" view, should only be called once
+ * 
+ * @param {String} tab
+ */
 var setupPostMessageFormForTab = function(tab)
 {
     document.getElementById(tab + "PostMessageForm").onsubmit = function()
@@ -256,6 +341,10 @@ var setupPostMessageFormForTab = function(tab)
     }
 }
 
+/**
+ * setupSearchProfileForm() sets up the form for searching for other users
+ * called when setting up the "profile" view, should only be called once
+ */
 var setupSearchProfileForm = function()
 {
     document.getElementById("searchProfileForm").onsubmit = function()
@@ -280,6 +369,13 @@ var setupSearchProfileForm = function()
     };
 }
 
+/**
+ * setupRefreshButtonForTab() sets up the onclick function for the refresh button for a wall on the specified tab
+ * called when setting up the "profile" view, should only be called once
+ * 
+ * @param {Element} element (button element)
+ * @param {String} tab
+ */
 var setupRefreshButtonForTab = function(element, tab)
 {
     element.onclick = function()
@@ -297,6 +393,10 @@ var setupRefreshButtonForTab = function(element, tab)
     }
 }
 
+/**
+ * setupMenuItems() sets up the onclick function for the menu buttons
+ * called when setting up the "profile" view, should only be called once
+ */
 var setupMenuItems = function()
 {
     var menuItems = document.getElementsByClassName("menuItem");
@@ -310,6 +410,10 @@ var setupMenuItems = function()
     }
 }
 
+/**
+ * setupChangePasswordForm() sets up the form for changing password
+ * called when setting up the "profile" view, should only be called once
+ */
 var setupChangePasswordForm = function()
 {
     document.getElementById("changePasswordForm").onsubmit = function()
@@ -324,6 +428,12 @@ var setupChangePasswordForm = function()
     validatePasswordMatchOnInput(document.getElementById("newPassword"), document.getElementById("repeatNewPassword"));
 }
 
+/**
+ * setupMessageOnDrop() sets up ondrop event for a specified textarea element
+ * called when setting up the "profile" view, should only be called once
+ * 
+ * @param {Element} element (textarea element)
+ */
 var setupMessageOnDrop = function(element)
 {    
     element.ondrop = function(event)
@@ -343,6 +453,10 @@ var setupMessageOnDrop = function(element)
     };
 }
 
+/**
+ * setupMessagesOnDrag() sets up ondragstart event for the elements with class name messageContainer (i.e messages on a wall)
+ * called when setting up the "profile" view, should only be called once
+ */
 var setupMessagesOnDrag = function()
 {
     var containers = document.getElementsByClassName("messageContainer");
@@ -357,6 +471,11 @@ var setupMessagesOnDrag = function()
     }
 }
 
+/**
+ * setupWebSocket() sets up a web socket with the server
+ * sets up functions for onopen and onmessage events
+ * called when setting up the "profile" view, should only be called once
+ */
 var setupWebSocket = function() 
 {
     webSocket = new WebSocket("ws://127.0.0.1:5000/api");
@@ -399,6 +518,10 @@ var setupWebSocket = function()
 
 /* FUNCTIONS FOR SERVER CALLS */
 
+/**
+ * signOut() signs out the user
+ * called when the user clicks the sign out button or when the web socket recieves a sign out message
+ */
 var signOut = function()
 {
     var utcTimestamp = getUTCTimestamp();
@@ -416,6 +539,10 @@ var signOut = function()
     });
 }
 
+/**
+ * signIn() signs in a user
+ * called when the user submits the sign in form 
+ */
 var signIn = function()
 {
     var loginEmail = document.getElementById("loginEmail");
@@ -436,6 +563,10 @@ var signIn = function()
     }); 
 }
 
+/**
+ * signUp() signs up a users
+ * called when the user submits the sign up form 
+ */
 var signUp = function()
 {
     var signupPassword = document.getElementById("signupPassword");
@@ -461,6 +592,10 @@ var signUp = function()
     }
 }
 
+/**
+ * changePassword() changes the password for the user
+ * called when the user submits the change password form 
+ */
 var changePassword = function()
 {
     var oldPassword = document.getElementById("oldPassword");
@@ -486,6 +621,14 @@ var changePassword = function()
     }
 }
 
+/**
+ * postMessageToWall() posts a message to the specified wall (i.e wall with matching email)
+ * called when the user submits the post message form 
+ * 
+ * @param {String} message
+ * @param {String} email
+ * @param {Function} callbackFunction
+ */
 var postMessageToWall = function(message, email, callbackFunction)
 {   
     var data = {message: message, wallEmail: email};
@@ -493,6 +636,15 @@ var postMessageToWall = function(message, email, callbackFunction)
     postMessage(email, data, callbackFunction);
 } 
 
+/**
+ * postMessageAndFileToWall() posts a message and a file to the specified wall (i.e wall with matching email)
+ * called when the user submits the post message form 
+ * 
+ * @param {String} message
+ * @param {File} file
+ * @param {String} email
+ * @param {Function} callbackFunction
+ */
 var postMessageAndFileToWall = function(message, file, email, callbackFunction)
 {
     if (validFileSize(file.size))
@@ -507,7 +659,14 @@ var postMessageAndFileToWall = function(message, file, email, callbackFunction)
     }
 }
 
-/* Helper function for postMessageToWall and postMessageAndFileToWall */
+/**
+ * postMessage() is a helper function for postMessageToWall and postMessageAndFileToWall
+ * it does the actual post request to the server
+ * 
+ * @param {String} wallEmail
+ * @param {Object} data
+ * @param {Function} callbackFunction
+ */
 var postMessage = function(wallEmail, data, callbackFunction)
 {
     var utcTimestamp = getUTCTimestamp();
@@ -527,6 +686,12 @@ var postMessage = function(wallEmail, data, callbackFunction)
     });
 }
 
+/**
+ * addViewToWall() adds a view to the specified wall
+ * called when a user searches for another user's wall in the browse tab and finds a match
+ * 
+ * @param {String} wallEmail
+ */
 var addViewToWall = function(wallEmail)
 {
     var data = {wallEmail: wallEmail};
@@ -540,6 +705,13 @@ var addViewToWall = function(wallEmail)
     });
 }
 
+/**
+ * loadProfileInformation() loads the profile information for a user
+ * called when a user signs in or searches for another user's wall in the browse tab and finds a match
+ * 
+ * @param {String} profileEmail
+ * @param {Function} callbackFunction
+ */
 var loadProfileInformation = function(profileEmail, callbackFunction)
 {
     var utcTimestamp = getUTCTimestamp();
@@ -559,6 +731,13 @@ var loadProfileInformation = function(profileEmail, callbackFunction)
     });
 }
 
+/**
+ * loadMessages() loads the messages for a user's wall
+ * called when a user signs in or searches for another user's wall in the browse tab and finds a match
+ * 
+ * @param {String} profileEmail
+ * @param {Function} callbackFunction
+ */
 var loadMessages = function(profileEmail, callbackFunction)
 {
     var utcTimestamp = getUTCTimestamp();
@@ -572,21 +751,46 @@ var loadMessages = function(profileEmail, callbackFunction)
 
 /* VALIDATION FUNCTIONS */
 
+/**
+ * validPasswordLength() checks that the password is at least 6 charachters long
+ * called when a user submits the sign up or changes password form
+ * 
+ * @param {String} password
+ */
 var validPasswordLength = function(password)
 {
     return (password.length >= 6);
 }
 
+/**
+ * validPasswordMatch() checks that the repeated password matches the other password
+ * called when a user submits the sign up or changes password form
+ * 
+ * @param {String} repeatPassword
+ * @param {String} password
+ */
 var validPasswordMatch = function(repeatPassword, password)
 {
     return (password == repeatPassword);
 }
 
+/**
+ * validPasswordMatch() checks that fileSize is less than 4 Mb
+ * called when a user tries to post a message and file to a wall
+ * 
+ * @param {String} fileSize
+ */
 var validFileSize = function(fileSize)
 {
     return (fileSize / 1000000 < 4); 
 }
 
+/**
+ * clearCustomValidityOnInput() removes the custom validation message on a specified input element
+ * called when a user inputs something new to the specified input element
+ * 
+ * @param {Element} element
+ */
 var clearCustomValidityOnInput = function(element)
 {
     element.oninput = function()
@@ -595,6 +799,12 @@ var clearCustomValidityOnInput = function(element)
     }
 }
 
+/**
+ * validatePasswordLengthOnInput() checks the password length on the specified input element
+ * called when a user inputs something to a specified password element and sets a custom validation message
+ * 
+ * @param {Element} element
+ */
 var validatePasswordLengthOnInput = function(element)
 {
     element.oninput = function()
@@ -606,6 +816,13 @@ var validatePasswordLengthOnInput = function(element)
     }
 }
 
+/**
+ * validatePasswordLengthOnInput() checks the repeated password matches the other password
+ * called when a user inputs something to a specified password element and sets a custom validation message
+ * 
+ * @param {Element} element
+ * @param {Element} elementToMatch
+ */
 var validatePasswordMatchOnInput = function(element, elementToMatch)
 {
     elementToMatch.oninput = function()
@@ -619,6 +836,12 @@ var validatePasswordMatchOnInput = function(element, elementToMatch)
 
 /* MENU FUNCTIONS */
 
+/**
+ * setSelectedMenuItem() sets the menu item with mathcing id attribute as selected (and all others as not selected)
+ * called when a user switches between tabs
+ * 
+ * @param {String} menuItemId
+ */
 var setSelectedMenuItem = function(menuItemId)
 {
     var selectedMenuItem = document.getElementsByClassName("selected");
@@ -628,6 +851,12 @@ var setSelectedMenuItem = function(menuItemId)
     document.getElementById(menuItemId).classList.add("selected");
 }
 
+/**
+ * menuItemClick() is called when a user clicks on a menu item
+ * sets the clicked menu item as selected and performs client-side routing depeding on which menu item it is
+*
+ * @param {Element} menuItem
+ */
 var menuItemClick = function(menuItem)
 {
     setSelectedMenuItem(menuItem.getAttribute("id"));
@@ -651,11 +880,19 @@ var menuItemClick = function(menuItem)
 
 /* LIVE DATA FUNCTIONS */
 
+/**
+ * updateUsersCounter() updates the counter for the number of signed in users
+ * called when the web socket recieves a update users counter message
+ */
 var updateUsersCounter = function(data)
 {
     document.getElementById("usersCounter").innerHTML = "Users online: " + data;
 }
 
+/**
+ * updatePostsChart() updates the data for the posts chart on the account tab
+ * called when the web socket recieves a update posts data message
+ */
 var updatePostsChart = function(data)
 {
     var context = document.getElementById("postsChart").getContext("2d");
@@ -670,11 +907,19 @@ var updatePostsChart = function(data)
     document.getElementById("postsStatsLegend").innerHTML = legendHTML;
 }
 
+/**
+ * updatePostsCounter() updates the counter for the number of total posts
+ * called when the web socket recieves a update posts counter message
+ */
 var updatePostsCounter = function(data)
 {
     document.getElementById("totalPosts").innerHTML = '<span>Total</span><br/>' + data;
 }
 
+/**
+ * updateViewsChart() updates the data for the views chart on the account tab
+ * called when the web socket recieves a update views data message
+ */
 var updateViewsChart = function(data)
 {
     var context = document.getElementById("viewsChart").getContext("2d");
@@ -687,6 +932,10 @@ var updateViewsChart = function(data)
 
 /* HTTP REQUEST */
 
+/**
+ * getUTCTimestamp() returns a utc timestamp string in the format YYYY-MM-DD HH:MM:SS
+ * called when creating a hash for a http request
+ */
 var getUTCTimestamp = function()
 {
     var now = new Date();
@@ -694,6 +943,14 @@ var getUTCTimestamp = function()
     return now.getUTCFullYear() + "-" + (now.getUTCMonth() + 1) + "-" + now.getUTCDate() + " " + now.getUTCHours() + ":" + now.getUTCMinutes() + ":" + now.getUTCSeconds();
 }
 
+/**
+ * createHash() creates a hmac hash for a http request
+ * all properties of data are added to the hash as well as the timestamp
+ * called when creating a hash for a http request
+ * 
+ * @param {Object} data
+ * @param {String} timestamp
+ */
 var createHash = function(data, timestamp)
 {    
     var shaObj = new jsSHA("SHA-256", "TEXT", {encoding: "UTF8"});
@@ -723,6 +980,18 @@ var createHash = function(data, timestamp)
     return shaObj.getHMAC("HEX");
 }
 
+/**
+ * makeHttpRequest() makes a http request to the server for the specified url
+ * called when the user submits a form or requests data from the server
+ * 
+ * @param {String} type (GET or POST)
+ * @param {String} url
+ * @param {String} parameters
+ * @param {Object} data
+ * @param {String} hash
+ * @param {String} timestamp
+ * @param {Function} callbackFunction
+ */
 var makeHttpRequest = function(type, url, parameters, data, hash, timestamp, callbackFunction)
 {
     var xhttp = new XMLHttpRequest();
