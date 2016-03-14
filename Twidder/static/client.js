@@ -1,10 +1,12 @@
-// web socket object
+// web socket object for communcation with the server
 var webSocket;
 
-// chart object for posts data
+// chart object for posts information
 var postsChart;
-// chart object for views data
+
+// chart object for views information
 var viewsChart;
+
 
 /**
  * ifequal() is a function for Handlebars that checks if the two arguments are equal or not
@@ -25,8 +27,8 @@ window.onload = function()
 }
 
 /**
- * isUserSignedIn() checks if the user's token and email is stored or not in local storage
- * called whenever the user's state need to be checked
+ * isUserSignedIn() checks if the user's token and email is stored or not in local storage.
+ * Called whenever the user's state need to be checked.
  *
  * @return {Boolean} 
  */
@@ -36,7 +38,7 @@ var isUserSignedIn = function()
 }
 
 /**
- * loadSignedIn() loads the profile view and sets up all the forms, menu, event listeners, web socket etc. for this view 
+ * loadSignedIn() loads the profile view and sets up all the forms, menu, event listeners, web socket etc. for this view.
  */
 var loadSignedIn = function()
 {
@@ -90,9 +92,9 @@ var loadSignedOut = function()
 /* DISPLAY FUNCTIONS */
 
 /**
- * displayView() displays the view with matching view id
- * adds the messageViewContainer to the body aswell, so displayMessage and hideMessage can be used
- * called when views need to be swapped (like signing in or out)
+ * displayView() displays the view with matching view id.
+ * Adds the messageViewContainer to the body aswell, so displayMessage and hideMessage can be used.
+ * Called when views need to be swapped (like signing in or out).
  * 
  * @param {String} viewId
  */
@@ -108,9 +110,9 @@ var displayView = function(viewId)
 }
 
 /**
- * displayMessage() displays a message at the top of the page and hidden autmoatically after 3 seconds
- * the type is used as a class for the element so the style changes if it's an error message or an info message
- * called whenever a message needs to be communicated to the user
+ * displayMessage() displays a message at the top of the page and hidden autmoatically after 3 seconds.
+ * The type is used as a class for the element so the style changes if it's an error message or an info message.
+ * Called whenever a message needs to be communicated to the user.
  * 
  * @param {String} message
  * @param {String} type
@@ -127,8 +129,8 @@ var displayMessage = function(message, type)
 }
 
 /**
- * hideMessage() hides the message displayed with displayMessage() function
- * called by a setTimeout function set in displayMessage()
+ * hideMessage() hides the message displayed with displayMessage() function.
+ * Called by a setTimeout function set in displayMessage().
  */
 var hideMessage = function()
 {
@@ -140,8 +142,8 @@ var hideMessage = function()
 }
 
 /**
- * displayProfileInformation() shows the profileInformation for a user in the specified tab
- * called when a user signs in or when a user search for another user's wall in browse tab
+ * displayProfileInformation() shows the profileInformation for a user in the specified tab.
+ * Called when a user signs in or when a user search for another user's wall in browse tab.
  * 
  * @param {Object} profileInformation
  * @param {String} tab
@@ -158,8 +160,8 @@ var displayProfileInformation = function(profileInformation, tab)
 }
 
 /**
- * displayMessages() shows the messages for a wall in the specified tab
- * called when a user signs in, when a user search for another user's wall in browse tab or refreshes a wall
+ * displayMessages() shows the messages for a wall in the specified tab.
+ * Called when a user signs in, when a user search for another user's wall in browse tab or refreshes a wall.
  * 
  * @param {Array} messages
  * @param {String} tab
@@ -178,8 +180,8 @@ var displayMessages = function(messages, tab)
 }
 
 /**
- * displayTab() displays the matching tab
- * called when a user switches between tabs using the menu (i.e when client side routing is performed)
+ * displayTab() displays the matching tab.
+ * Called when a user switches between tabs using the menu (i.e when client side routing is performed).
  * 
  * @param {String} tab
  */
@@ -197,8 +199,8 @@ var displayTab = function(tab)
 }
 
 /**
- * displayBrowseElements() displays the elements with class "hide" in the browse tab
- * called when a user searches for another user in the browse tab and finds a match
+ * displayBrowseElements() displays the elements with class "hide" in the browse tab.
+ * Called when a user searches for another user in the browse tab and finds a match.
  */
 var displayBrowseElements = function()
 {
@@ -213,8 +215,8 @@ var displayBrowseElements = function()
 /* SETUP FUNCTIONS */
 
 /**
- * setupClientSideRouting() sets up client-side routing
- * called at the loading of the page, should only be called once
+ * setupClientSideRouting() sets up client-side routing.
+ * Called when loading the page (window.onload).
  */
 var setupClientSideRouting = function()
 {
@@ -250,8 +252,8 @@ var setupClientSideRouting = function()
 }
 
 /**
- * setupClientSideRouting() sets up the login form
- * called when setting up the "welcome" view, should only be called once
+ * setupClientSideRouting() sets up the login form.
+ * Called from loadSignedOut() (when setting up the "welcome" view).
  */
 var setupLoginForm = function()
 {    
@@ -266,8 +268,8 @@ var setupLoginForm = function()
 }
 
 /**
- * setupSignUpForm() sets up the sing up form
- * called when setting up the "welcome" view, should only be called once
+ * setupSignUpForm() sets up the sing up form.
+ * Called from loadSignedOut() (when setting up the "welcome" view).
  */
 var setupSignUpForm = function()
 {   
@@ -285,7 +287,7 @@ var setupSignUpForm = function()
 
 /**
  * setupProfileForTab() sets up the profile layout for a tab using a template
- * called when setting up the "profile" view, should only be called once
+ * Called from loadSignedIn() (when setting up the "profile" view).
  * 
  * @param {Object} tabData
  */
@@ -302,7 +304,7 @@ var setupProfileForTab = function(tabData)
 
 /**
  * setupPostMessageFormForTab() sets up the form for posting a message for the specified
- * called when setting up the "profile" view, should only be called once
+ * Called from loadSignedIn() (when setting up the "profile" view).
  * 
  * @param {String} tab
  */
@@ -343,7 +345,8 @@ var setupPostMessageFormForTab = function(tab)
 
 /**
  * setupSearchProfileForm() sets up the form for searching for other users
- * called when setting up the "profile" view, should only be called once
+ * Called from loadSignedIn() (when setting up the "profile" view).
+ * Should only be called once.
  */
 var setupSearchProfileForm = function()
 {
@@ -371,7 +374,7 @@ var setupSearchProfileForm = function()
 
 /**
  * setupRefreshButtonForTab() sets up the onclick function for the refresh button for a wall on the specified tab
- * called when setting up the "profile" view, should only be called once
+ * Called from loadSignedIn() (when setting up the "profile" view).
  * 
  * @param {Element} element (button element)
  * @param {String} tab
@@ -395,7 +398,7 @@ var setupRefreshButtonForTab = function(element, tab)
 
 /**
  * setupMenuItems() sets up the onclick function for the menu buttons
- * called when setting up the "profile" view, should only be called once
+ * Called from loadSignedIn() (when setting up the "profile" view).
  */
 var setupMenuItems = function()
 {
@@ -412,7 +415,7 @@ var setupMenuItems = function()
 
 /**
  * setupChangePasswordForm() sets up the form for changing password
- * called when setting up the "profile" view, should only be called once
+ * Called from loadSignedIn() (when setting up the "profile" view).
  */
 var setupChangePasswordForm = function()
 {
@@ -430,7 +433,7 @@ var setupChangePasswordForm = function()
 
 /**
  * setupMessageOnDrop() sets up ondrop event for a specified textarea element
- * called when setting up the "profile" view, should only be called once
+ * Called from loadSignedIn() (when setting up the "profile" view).
  * 
  * @param {Element} element (textarea element)
  */
@@ -454,8 +457,8 @@ var setupMessageOnDrop = function(element)
 }
 
 /**
- * setupMessagesOnDrag() sets up ondragstart event for the elements with class name messageContainer (i.e messages on a wall)
- * called when setting up the "profile" view, should only be called once
+ * setupMessagesOnDrag() sets up ondragstart event for the elements with class name messageContainer (i.e messages on a wall).
+ * Called from displayMessages() (when displaying a user's wall messages).
  */
 var setupMessagesOnDrag = function()
 {
@@ -474,7 +477,7 @@ var setupMessagesOnDrag = function()
 /**
  * setupWebSocket() sets up a web socket with the server
  * sets up functions for onopen and onmessage events
- * called when setting up the "profile" view, should only be called once
+ * Called from loadSignedIn() (when setting up the "profile" view).
  */
 var setupWebSocket = function() 
 {
@@ -519,8 +522,8 @@ var setupWebSocket = function()
 /* FUNCTIONS FOR SERVER CALLS */
 
 /**
- * signOut() signs out the user
- * called when the user clicks the sign out button or when the web socket recieves a sign out message
+ * signOut() signs out the user.
+ * Called when the user clicks the sign out button or when the web socket recieves a sign out message.
  */
 var signOut = function()
 {
@@ -540,8 +543,8 @@ var signOut = function()
 }
 
 /**
- * signIn() signs in a user
- * called when the user submits the sign in form 
+ * signIn() signs in a user.
+ * Called when the user submits the sign in form.
  */
 var signIn = function()
 {
@@ -564,8 +567,8 @@ var signIn = function()
 }
 
 /**
- * signUp() signs up a users
- * called when the user submits the sign up form 
+ * signUp() signs up a users.
+ * Called when the user submits the sign up form.
  */
 var signUp = function()
 {
@@ -593,8 +596,8 @@ var signUp = function()
 }
 
 /**
- * changePassword() changes the password for the user
- * called when the user submits the change password form 
+ * changePassword() changes the password for the user.
+ * Called when the user submits the change password form.
  */
 var changePassword = function()
 {
@@ -622,8 +625,8 @@ var changePassword = function()
 }
 
 /**
- * postMessageToWall() posts a message to the specified wall (i.e wall with matching email)
- * called when the user submits the post message form 
+ * postMessageToWall() posts a message to the specified wall (i.e wall with matching email).
+ * Called when the user submits the post message form.
  * 
  * @param {String} message
  * @param {String} email
@@ -637,8 +640,8 @@ var postMessageToWall = function(message, email, callbackFunction)
 } 
 
 /**
- * postMessageAndFileToWall() posts a message and a file to the specified wall (i.e wall with matching email)
- * called when the user submits the post message form 
+ * postMessageAndFileToWall() posts a message and a file to the specified wall (i.e wall with matching email).
+ * Called when the user submits the post message form.
  * 
  * @param {String} message
  * @param {File} file
@@ -660,8 +663,8 @@ var postMessageAndFileToWall = function(message, file, email, callbackFunction)
 }
 
 /**
- * postMessage() is a helper function for postMessageToWall and postMessageAndFileToWall
- * it does the actual post request to the server
+ * postMessage() is a helper function for postMessageToWall and postMessageAndFileToWall.
+ * It does the actual post request to the server.
  * 
  * @param {String} wallEmail
  * @param {Object} data
@@ -687,8 +690,8 @@ var postMessage = function(wallEmail, data, callbackFunction)
 }
 
 /**
- * addViewToWall() adds a view to the specified wall
- * called when a user searches for another user's wall in the browse tab and finds a match
+ * addViewToWall() adds a view to the specified wall.
+ * Called when a user searches for another user's wall in the browse tab and finds a match.
  * 
  * @param {String} wallEmail
  */
@@ -706,8 +709,8 @@ var addViewToWall = function(wallEmail)
 }
 
 /**
- * loadProfileInformation() loads the profile information for a user
- * called when a user signs in or searches for another user's wall in the browse tab and finds a match
+ * loadProfileInformation() loads the profile information for a user.
+ * Called when a user signs in or searches for another user's wall in the browse tab and finds a match.
  * 
  * @param {String} profileEmail
  * @param {Function} callbackFunction
@@ -732,8 +735,8 @@ var loadProfileInformation = function(profileEmail, callbackFunction)
 }
 
 /**
- * loadMessages() loads the messages for a user's wall
- * called when a user signs in or searches for another user's wall in the browse tab and finds a match
+ * loadMessages() loads the messages for a user's wall.
+ * Called when a user signs in or searches for another user's wall in the browse tab and finds a match.
  * 
  * @param {String} profileEmail
  * @param {Function} callbackFunction
@@ -752,8 +755,8 @@ var loadMessages = function(profileEmail, callbackFunction)
 /* VALIDATION FUNCTIONS */
 
 /**
- * validPasswordLength() checks that the password is at least 6 charachters long
- * called when a user submits the sign up or changes password form
+ * validPasswordLength() checks that the password is at least 6 charachters long.
+ * Called when a user submits the sign up or changes password form.
  * 
  * @param {String} password
  * @return {Boolean}
@@ -764,8 +767,8 @@ var validPasswordLength = function(password)
 }
 
 /**
- * validPasswordMatch() checks that the repeated password matches the other password
- * called when a user submits the sign up or changes password form
+ * validPasswordMatch() checks that the repeated password matches the other password.
+ * Called when a user submits the sign up or changes password form.
  * 
  * @param {String} repeatPassword
  * @param {String} password
@@ -777,8 +780,8 @@ var validPasswordMatch = function(repeatPassword, password)
 }
 
 /**
- * validPasswordMatch() checks that fileSize is less than 4 Mb
- * called when a user tries to post a message and file to a wall
+ * validPasswordMatch() checks that fileSize is less than 4 Mb.
+ * Called when a user tries to post a message and file to a wall.
  * 
  * @param {String} fileSize
  * @return {Boolean}
@@ -789,8 +792,8 @@ var validFileSize = function(fileSize)
 }
 
 /**
- * clearCustomValidityOnInput() removes the custom validation message on a specified input element
- * called when a user inputs something new to the specified input element
+ * clearCustomValidityOnInput() removes the custom validation message on a specified input element.
+ * Called when a user inputs something new to the specified input element.
  * 
  * @param {Element} element
  */
@@ -803,8 +806,8 @@ var clearCustomValidityOnInput = function(element)
 }
 
 /**
- * validatePasswordLengthOnInput() checks the password length on the specified input element
- * called when a user inputs something to a specified password element and sets a custom validation message
+ * validatePasswordLengthOnInput() checks the password length on the specified input element.
+ * Called when a user inputs something to a specified password element and sets a custom validation message.
  * 
  * @param {Element} element
  */
@@ -820,8 +823,8 @@ var validatePasswordLengthOnInput = function(element)
 }
 
 /**
- * validatePasswordLengthOnInput() checks the repeated password matches the other password
- * called when a user inputs something to a specified password element and sets a custom validation message
+ * validatePasswordLengthOnInput() checks the repeated password matches the other password.
+ * Called when a user inputs something to a specified password element and sets a custom validation message.
  * 
  * @param {Element} element
  * @param {Element} elementToMatch
@@ -840,8 +843,8 @@ var validatePasswordMatchOnInput = function(element, elementToMatch)
 /* MENU FUNCTIONS */
 
 /**
- * setSelectedMenuItem() sets the menu item with mathcing id attribute as selected (and all others as not selected)
- * called when a user switches between tabs
+ * setSelectedMenuItem() sets the menu item with mathcing id attribute as selected (and all others as not selected).
+ * Called when a user switches between tabs.
  * 
  * @param {String} menuItemId
  */
@@ -855,8 +858,8 @@ var setSelectedMenuItem = function(menuItemId)
 }
 
 /**
- * menuItemClick() is called when a user clicks on a menu item
- * sets the clicked menu item as selected and performs client-side routing depeding on which menu item it is
+ * menuItemClick() is called when a user clicks on a menu item.
+ * Sets the clicked menu item as selected and performs client-side routing depeding on which menu item it is.
 *
  * @param {Element} menuItem
  */
@@ -884,8 +887,8 @@ var menuItemClick = function(menuItem)
 /* LIVE DATA FUNCTIONS */
 
 /**
- * updateUsersCounter() updates the counter for the number of signed in users
- * called when the web socket recieves a update users counter message
+ * updateUsersCounter() updates the counter for the number of signed in users.
+ * Called when the web socket recieves a update users counter message.
  */
 var updateUsersCounter = function(data)
 {
@@ -893,8 +896,8 @@ var updateUsersCounter = function(data)
 }
 
 /**
- * updatePostsChart() updates the data for the posts chart on the account tab
- * called when the web socket recieves a update posts data message
+ * updatePostsChart() updates the data for the posts chart on the account tab.
+ * Called when the web socket recieves a update posts data message.
  */
 var updatePostsChart = function(data)
 {
@@ -911,8 +914,8 @@ var updatePostsChart = function(data)
 }
 
 /**
- * updatePostsCounter() updates the counter for the number of total posts
- * called when the web socket recieves a update posts counter message
+ * updatePostsCounter() updates the counter for the number of total posts.
+ * Called when the web socket recieves a update posts counter message.
  */
 var updatePostsCounter = function(data)
 {
@@ -920,8 +923,8 @@ var updatePostsCounter = function(data)
 }
 
 /**
- * updateViewsChart() updates the data for the views chart on the account tab
- * called when the web socket recieves a update views data message
+ * updateViewsChart() updates the data for the views chart on the account tab.
+ * Called when the web socket recieves a update views data message.
  */
 var updateViewsChart = function(data)
 {
@@ -937,7 +940,7 @@ var updateViewsChart = function(data)
 
 /**
  * getUTCTimestamp() returns a utc timestamp string in the format YYYY-MM-DD HH:MM:SS
- * called when creating a hash for a http request
+ * Called when creating a hash for a http request.
  * 
  * @return {String}
  */
@@ -949,9 +952,9 @@ var getUTCTimestamp = function()
 }
 
 /**
- * createHash() creates a hmac hash for a http request
- * all properties of data are added to the hash as well as the timestamp
- * called when creating a hash for a http request
+ * createHash() creates a hmac hash for a http request.
+ * All properties of data are added to the hash as well as the timestamp.
+ * Called when creating a hash for a http request.
  * 
  * @param {Object} data
  * @param {String} timestamp
@@ -980,15 +983,15 @@ var createHash = function(data, timestamp)
 	}
     }
     
-    // Always add the timestamp to the end
+    // Always add the timestamp to the end.
     shaObj.update("&timestamp=" + timestamp);
 
     return shaObj.getHMAC("HEX");
 }
 
 /**
- * makeHttpRequest() makes a http request to the server for the specified url
- * called when the user submits a form or requests data from the server
+ * makeHttpRequest() makes a http request to the server for the specified url.
+ * Called when the user submits a form or requests data from the server.
  * 
  * @param {String} type (GET or POST)
  * @param {String} url
@@ -1039,7 +1042,7 @@ var makeHttpRequest = function(type, url, parameters, data, hash, timestamp, cal
     {
 	var formData = new FormData();
 	
-	// Convert the data provided to form data to easier send it in the post 
+	// Convert the data provided to form data to easier send it in the post
 	for (var key in data)
 	{
 	    formData.append(key, data[key]);

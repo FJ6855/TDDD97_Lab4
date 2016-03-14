@@ -26,6 +26,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
 
 class SignUpForm(Form):
+    """Class for validating sign up post data."""
     firstName = TextField('First name', [validators.Required()])
     lastName = TextField('Last name', [validators.Required()])
     gender = TextField('Gender', [validators.Required(), validators.AnyOf(values=['Male', 'Female'])])
@@ -35,6 +36,7 @@ class SignUpForm(Form):
     signupPassword = PasswordField('Password', [validators.Required(), validators.Length(min=6)])
 
 class ChangePasswordForm(Form):
+    """Class for validating change password post data."""
     oldPassword = PasswordField('Old password', [validators.Required()])
     newPassword = PasswordField('New password', [validators.Required(), validators.Length(min=6)])
 
@@ -166,7 +168,7 @@ def sendUserViewData(email):
         if newMonth == 0:
             newMonth = 12
         today = today.replace(month=newMonth)
-    # Setup up the data in the form that chart.js expects it in.
+    # Setup the data in the form that chart.js expects it in.
     data['datasets'].append({'label': 'Number of views', 'data': [0, 0, 0, 0, 0, 0]})
     data['datasets'].append({'label': 'Number of posts', 'data': [0, 0, 0, 0, 0, 0]})
     data['datasets'][0]['fillColor'] = 'rgba(200,200,200,0.2)'

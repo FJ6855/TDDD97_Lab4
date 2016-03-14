@@ -1,236 +1,209 @@
 <!DOCTYPE html>
 <html>
-  <title>Twidder</title>
-  <link href="/static/client.css" type="text/css" rel="stylesheet">
-  <script src="/static/page.js" type="text/javascript"></script>
-  <script src="/static/handlebars.js" type="text/javascript"></script>
-  <script src="/static/chart.js" type="text/javascript"></script>
-  <script src="/static/sha256.js" type="text/javascript"></script>
-  <script src="/static/client.js" type="text/javascript"></script>
-
-  <script id="profileInformationTemplate" type="text/x-handlebars-template">
-    <h1>Profile</h1>
-    <h2>Profile information</h2>
-    <p><span>Name:</span> {{name}}</p>
-    <p><span>Email:</span> {{email}}</p>
-    <p><span>Gender:</span> {{gender}}</p>
-    <p><span>City:</span> {{city}}</p>
+  <head>
+    <title>Twidder</title>
+    <link href="/static/client.css" type="text/css" rel="stylesheet">
+    <script src="/static/page.js" type="text/javascript"></script>
+    <script src="/static/handlebars.js" type="text/javascript"></script>
+    <script src="/static/chart.js" type="text/javascript"></script>
+    <script src="/static/sha256.js" type="text/javascript"></script>
+    <script src="/static/client.js" type="text/javascript"></script>
+    
+    <!-- Template for a user's profile information. -->
+    <script id="profileInformationTemplate" type="text/x-handlebars-template">
+      <h1>Profile</h1>
+      <h2>Profile information</h2>
+      <p><span>Name:</span> {{name}}</p>
+      <p><span>Email:</span> {{email}}</p>
+      <p><span>Gender:</span> {{gender}}</p>
+      <p><span>City:</span> {{city}}</p>
     <p><span>Country:</span> {{country}}</p>
-  </script>
+    </script>
+    
+    <!-- Template for a message on a wall. -->
+    <script id="messagesTemplate" type="text/x-handlebars-template">
+      {{#each messages}}
+      <div class="messageContainer" draggable="true">
+	<h2>{{writer}} : {{datePosted}}</h2>
+	<p>{{message}}</p>
+	{{#if fileName}}
+	{{#ifequal fileType "image"}}
+	<img src="uploads/{{fileName}}"></img>
+	{{/ifequal}} 
+	{{#ifequal fileType "video"}}
+	<video src="uploads/{{fileName}}" controls></video>
+	{{/ifequal}} 
+	{{#ifequal fileType "audio"}}
+	<audio src="uploads/{{fileName}}" controls></audio>
+	{{/ifequal}} 
+	{{/if}}
+      </div>
+      {{/each}}
+    </script>
 
-  <script id="messagesTemplate" type="text/x-handlebars-template">
-    {{#each messages}}
-    <div class="messageContainer" draggable="true">
-      <h2>{{writer}} : {{datePosted}}</h2>
-      <p>{{message}}</p>
-      {{#if fileName}}
-      {{#ifequal fileType "image"}}
-      <img src="uploads/{{fileName}}"></img>
-      {{/ifequal}} 
-      {{#ifequal fileType "video"}}
-      <video src="uploads/{{fileName}}" controls></video>
-      {{/ifequal}} 
-      {{#ifequal fileType "audio"}}
-      <audio src="uploads/{{fileName}}" controls></audio>
-      {{/ifequal}} 
-      {{/if}}
-    </div>
-    {{/each}}
-  </script>
-
-  <script id="profileTemplate" type="text/x-handlebars-template">
-    <div id="{{tab}}ProfileInformation" class="profileInformation {{#if hide}}hide{{/if}}"> </div>
-    <div id="{{tab}}PostMessage" class="postMessage {{#if hide}}hide{{/if}}">
-      <h1>Post message</h1>
-      <form id="{{tab}}PostMessageForm" class="postMessageForm">	
-	<div class="formRow">
-	  <textarea id="{{tab}}Message" name="{{tab}}Message" placeholder="Write message here" required></textarea>
-	      </div>     
-	<div class="formRow">
-	  <input type="file" id="{{tab}}File" name="{{tab}}File" accept=".jpg,.jpeg,.png,.gif,.mp4,.ogg,.mp3,.wma,.wav"/>  
-	  <button id="{{tab}}PostMessageSubmit" name="{{tab}}PostMessageSubmit" type="submit">Post message</button>
-	</div> 
-      </form>
-    </div>
-    <div id="{{tab}}MessageWall" class="messageWall {{#if hide}}hide{{/if}}">
-      <h1>{{wallTitle}}</h1>
-      <button id="{{tab}}RefreshButton" name="{{tab}}RefreshButton" class="refreshButton">Refresh</button>
-      <div id="{{tab}}Messages" class="messages"></div>
-    </div>
-  </script>
-
-  <script type="text/view" id="welcomeView">
-    <div id="welcome" class="view">
-      <div id="logo"></div>
-      <div id="login">
-	<h1>Login</h1>
-	<form id="loginForm">
+    <!-- Template for the layout of a user's profile. Used in the home and browse tabs.  -->
+    <script id="profileTemplate" type="text/x-handlebars-template">
+      <div id="{{tab}}ProfileInformation" class="profileInformation {{#if hide}}hide{{/if}}"> </div>
+      <div id="{{tab}}PostMessage" class="postMessage {{#if hide}}hide{{/if}}">
+	<h1>Post message</h1>
+	<form id="{{tab}}PostMessageForm" class="postMessageForm">	
 	  <div class="formRow">
-	    <label>Email</label>
-	    <input id="loginEmail" name="loginEmail" type="email" required></input>
-	  </div>
+	    <textarea id="{{tab}}Message" name="{{tab}}Message" placeholder="Write message here" required></textarea>
+	  </div>     
 	  <div class="formRow">
-	    <label>Password</label>
-	    <input id="loginPassword" name="loginPassword" type="password" required></input>
-	  </div>
-	  <div class="formRow">
-	    <button id="loginSubmit" name="loginSubmit" type="submit">Login</button>
-	  </div>
+	    <input type="file" id="{{tab}}File" name="{{tab}}File" accept=".jpg,.jpeg,.png,.gif,.mp4,.ogg,.mp3,.wma,.wav"/>  
+	    <button id="{{tab}}PostMessageSubmit" name="{{tab}}PostMessageSubmit" type="submit">Post message</button>
+	  </div> 
 	</form>
       </div>
-      <div id="signup">
-	<h1>Sign up here</h1>
-	<form id="signUpForm">
-	  <div class="formRow">
-	    <label>First Name</label>
-	    <input id="firstName" name="firstName" type="text" required></input>
-	  </div>
-	  <div class="formRow">
-	    <label>Last Name</label>
-	    <input id="lastName" name="lastName" type="text" required></input>
-	  </div>
-	  <div class="formRow">
-	    <label>Gender</label>
-	    <select id="gender" name="gender" required>
-	      <option value="Male">Male</option>
-	      <option value="Female">Female</option>
-	    </select>
-	  </div>
-	  <div class="formRow">
-	    <label>City</label>
-	    <input id="city" name="city" type="text" required></input>
-	  </div>
-	  <div class="formRow">
-	    <label>Country</label>
-	    <input id="country" name="country" type="text" required></input>
-	  </div>
-	  <div class="formRow">
-	    <label>Email</label>
-	    <input id="signupEmail" name="signupEmail" type="email" required></input>
-	  </div>
-	  <div class="formRow">
-	    <label>Password</label>
-	    <input id="signupPassword" name="signupPassword" type="password" required></input>
-	  </div>
-	  <div class="formRow">
-	    <label>Repeat pwd</label>
-	    <input id="repeatPassword" name="repeatPassword" type="password" required></input>
-	  </div>
-	  <div class="formRow">
-	    <button id="signupSubmit" name="signupSubmit" type="submit">Sign up</button>
-	  </div>
-	</form>
+      <div id="{{tab}}MessageWall" class="messageWall {{#if hide}}hide{{/if}}">
+	<h1>{{wallTitle}}</h1>
+	<button id="{{tab}}RefreshButton" name="{{tab}}RefreshButton" class="refreshButton">Refresh</button>
+	<div id="{{tab}}Messages" class="messages"></div>
       </div>
-    </div>
-  </script>
-  <script type="text/view" id="profileView">
-    <div id="profile" class="view">
-      <div id="usersCounter">Users online: 0</div>
-      <div id="menu">
-	<div class="menuItem selected" id="homeButton">
-	  Home
-	</div>
-	<div class="menuItem" id="browseButton">
-	  Browse
-	</div>
-	<div class="menuItem" id="accountButton">
-	  Account
-	</div>
-	<div id="signOut">
-	  Sign out
-	</div>
-      </div>
-      <div id="contentContainer">
-	<div id="homeTab" class="tab selectedTab">
-	  <!--<div id="homeProfileInformation" class="profileInformation"> </div>
-	  <div id="homePostMessage" class="postMessage">
-	    <h1>Post message</h1>
-	    <form id="homePostMessageForm" class="postMessageForm">	
-	      <div class="formRow">
-		<textarea id="homeMessage" name="homeMessage" placeholder="Write message here" required></textarea>
-	      </div>     
-	      <div class="formRow">
-		<input type="file" id="homeFile" name="homeFile" accept=".jpg,.jpeg,.png,.gif,.mp4,.ogg,.mp3,.wma,.wav"/>  
-		<button id="homePostMessageSubmit" name="homePostMessageSubmit" type="submit">Post message</button>
-	      </div> 
-	    </form>
-	  </div>
-	  <div id="homeMessageWall" class="messageWall">
-	    <h1>My wall</h1>
-	    <button id="homeRefreshButton" name="homeRefreshButton" class="refreshButton">Refresh</button>
-	    <div id="homeMessages" class="messages"></div>
-	  </div>-->
-	</div>
-	<div id="browseTab" class="tab">
-	  <div id="searchProfile">
-	    <h1>Search Profile</h1>
-	    <form id="searchProfileForm">
-	      <div class="formRow">
-		<input id="profileEmail" name="profileEmail" type="email" placeholder="Type email here" required></input>
-		<button id="submitSearchProfile" name="submitSearchProfile" type="submit">Search</button>
-	      </div>    
-	    </form>
-	  </div>
-	  <!--<div id="browseProfileInformation" class="profileInformation hideBrowseElement"></div>
-	  <div id="browsePostMessage" class="postMessage hideBrowseElement">
-	    <h1>Post message</h1>
-	    <form id="browsePostMessageForm" class="postMessageForm ">	
-	      <div class="formRow">
-		<textarea id="browseMessage" name="browseMessage" placeholder="Write message here" required></textarea>
-	      </div>      
-	      <div class="formRow">
-		<input type="file" id="browseFile" name="homeFile" accept=".jpg,.jpeg,.png,.gif,.mpg,.mp4,.avi,.mp3,.wma,.wav"/>  
-		<button id="browserPostMessageSubmit" name="browserPostMessageSubmit" type="submit">Post message</button>
-	      </div>
-	    </form>
-	  </div>
-	  <div id="browseMessageWall" class="messageWall hideBrowseElement">
-	    <h1>Wall</h1>
-	    <button id="browseRefreshButton" name="browseRefreshButton" class="refreshButton">Refresh</button>
-	    <div id="browseMessages" class="messages"></div>
-	  </div>-->
-	</div>
-	<div id="accountTab" class="tab">
-	  <div id="changePassword">
-	    <h1>Change password</h1>
-	    <form id="changePasswordForm">
-	      <div class="formRow">
-		<label>Old password</label>
-		<input id="oldPassword" name="oldPassword" type="password" required></input>
-	      </div>	  
-	      <div class="formRow">
-		<label>New password</label>
-		<input id="newPassword" name="newPassword" type="password" required></input>
-	      </div>
-	      <div class="formRow">
-		<label>Repeat new pwd</label>
-		<input id="repeatNewPassword" name="repeatNewPassword" type="password" required></input>
-	      </div>
-	      <div class="formRow">
-		<button id="changePasswordSubmit" name="changePasswordSubmit" type="submit">Change password</button>
-	      </div>
-	    </form>
-	  </div>
-	  <div id="userStats">
-	    <h1>Stats</h1>
-	    <div id="postsStats">
-	      <h2>Number of posts</h2>
-	      <div id="totalPosts"></div>
-	      <canvas id="postsChart" width="300" height="300"></canvas>
-	      <div id="postsStatsLegend"></div>
+    </script>
+
+    <!-- Layout for the welcome view-->
+    <script type="text/view" id="welcomeView">
+      <div id="welcome" class="view">
+	<div id="logo"></div>
+	<div id="login">
+	  <h1>Login</h1>
+	  <form id="loginForm">
+	    <div class="formRow">
+	      <label>Email</label>
+	      <input id="loginEmail" name="loginEmail" type="email" required></input>
 	    </div>
-	    <div id="viewsStats">
-	      <h2>Number of views and posts last 6 months</h2>
-	      <canvas id="viewsChart" width="580" height="300"></canvas>
+	    <div class="formRow">
+	      <label>Password</label>
+	      <input id="loginPassword" name="loginPassword" type="password" required></input>
+	    </div>
+	    <div class="formRow">
+	      <button id="loginSubmit" name="loginSubmit" type="submit">Login</button>
+	    </div>
+	  </form>
+	</div>
+	<div id="signup">
+	  <h1>Sign up here</h1>
+	  <form id="signUpForm">
+	    <div class="formRow">
+	      <label>First Name</label>
+	      <input id="firstName" name="firstName" type="text" required></input>
+	    </div>
+	    <div class="formRow">
+	      <label>Last Name</label>
+	      <input id="lastName" name="lastName" type="text" required></input>
+	    </div>
+	    <div class="formRow">
+	      <label>Gender</label>
+	      <select id="gender" name="gender" required>
+		<option value="Male">Male</option>
+		<option value="Female">Female</option>
+	      </select>
+	    </div>
+	    <div class="formRow">
+	      <label>City</label>
+	      <input id="city" name="city" type="text" required></input>
+	    </div>
+	    <div class="formRow">
+	      <label>Country</label>
+	      <input id="country" name="country" type="text" required></input>
+	    </div>
+	    <div class="formRow">
+	      <label>Email</label>
+	      <input id="signupEmail" name="signupEmail" type="email" required></input>
+	    </div>
+	    <div class="formRow">
+	      <label>Password</label>
+	      <input id="signupPassword" name="signupPassword" type="password" required></input>
+	    </div>
+	    <div class="formRow">
+	      <label>Repeat pwd</label>
+	      <input id="repeatPassword" name="repeatPassword" type="password" required></input>
+	    </div>
+	    <div class="formRow">
+	      <button id="signupSubmit" name="signupSubmit" type="submit">Sign up</button>
+	    </div>
+	  </form>
+	</div>
+      </div>
+    </script>
+
+    <!-- Layout for the profile view. -->
+    <script type="text/view" id="profileView">
+      <div id="profile" class="view">
+	<div id="usersCounter">Users online: 0</div>
+	<div id="menu">
+	  <div class="menuItem selected" id="homeButton">
+	    Home
+	  </div>
+	  <div class="menuItem" id="browseButton">
+	    Browse
+	  </div>
+	  <div class="menuItem" id="accountButton">
+	    Account
+	  </div>
+	  <div id="signOut">
+	    Sign out
+	  </div>
+	</div>
+	<div id="contentContainer">
+	  <div id="homeTab" class="tab selectedTab"></div>
+	  <div id="browseTab" class="tab">
+	    <div id="searchProfile">
+	      <h1>Search Profile</h1>
+	      <form id="searchProfileForm">
+		<div class="formRow">
+		  <input id="profileEmail" name="profileEmail" type="email" placeholder="Type email here" required></input>
+		  <button id="submitSearchProfile" name="submitSearchProfile" type="submit">Search</button>
+		</div>    
+	      </form>
+	    </div>
+	  </div>
+	  <div id="accountTab" class="tab">
+	    <div id="changePassword">
+	      <h1>Change password</h1>
+	      <form id="changePasswordForm">
+		<div class="formRow">
+		  <label>Old password</label>
+		  <input id="oldPassword" name="oldPassword" type="password" required></input>
+		</div>	  
+		<div class="formRow">
+		  <label>New password</label>
+		  <input id="newPassword" name="newPassword" type="password" required></input>
+		</div>
+		<div class="formRow">
+		  <label>Repeat new pwd</label>
+		  <input id="repeatNewPassword" name="repeatNewPassword" type="password" required></input>
+		</div>
+		<div class="formRow">
+		  <button id="changePasswordSubmit" name="changePasswordSubmit" type="submit">Change password</button>
+		</div>
+	      </form>
+	    </div>
+	    <div id="userStats">
+	      <h1>Stats</h1>
+	      <div id="postsStats">
+		<h2>Number of posts</h2>
+		<div id="totalPosts"></div>
+		<canvas id="postsChart" width="300" height="300"></canvas>
+		<div id="postsStatsLegend"></div>
+	      </div>
+	      <div id="viewsStats">
+		<h2>Number of views and posts last 6 months</h2>
+		<canvas id="viewsChart" width="580" height="300"></canvas>
+	      </div>
 	    </div>
 	  </div>
 	</div>
       </div>
-    </div>
-  </script>
-  <script type="text/view" id="alertMessageView">
-    <div id="alertMessage"></div>
-  </script>
-<body>
-</body>
+    </script>
+
+    <!-- Layout for the message container. -->
+    <script type="text/view" id="alertMessageView">
+      <div id="alertMessage"></div>
+    </script>
+  </head>
+  <body>
+  </body>
 </html>
